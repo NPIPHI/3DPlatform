@@ -37,17 +37,19 @@ class main{
         var light = new THREE.PointLight( 0xffffff, 1, 100 );
         var ambLight = new THREE.AmbientLight(0x404040);
         scene.add (ambLight);
-        light.position.set( 10, 10, 10 );
+        light.position.set( 0, 10, 0 );
         scene.add( light );
         camCont = new cameraControl(camera);
         p1 = new player(0,0.5,5);
         animate();
         main.cycle();
         camCont.setDir([0,0,0]);
-        let pla  = new boxPlatform(0,0,0,1,1,2,{color:0x505050});
-        let pla1 = new boxPlatform(0.5,0.5,0.5,1,1,1,{color:0x880000});
-        let floor = new boxPlatform(-20,-1,-20,40,1,40,{color:0x505050});
-        console.log(pla.polygon.intersects(pla1.polygon));
+        new boxPlatform(-20,-1,-20,1,20,40,{color:0x8b0000});
+        new boxPlatform(-20,-1,-20,6,5,40,{color:0x000040});
+        //new boxPlatform(19,-1,-20,1,20,40,{color:0x8b0000});
+        //new boxPlatform(-20,-1,-20,40,20,1,{color:0x8b0000});
+        new boxPlatform(-20,-1,19,40,20,1,{color:0x8b0000});
+        new boxPlatform(-20,-1,-20,40,1,40,{color:0x505050});
     }
     static draw(){
         renderer.render(scene,camera);
@@ -89,13 +91,25 @@ class gameObject{
 class player extends gameObject{
     constructor(x,y,z){
         super();
-        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color: 0x000000}));
+        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color: 0x00ff00}));
         scene.add(this.mesh);
         this.pos = [x,y,z];
         this.dir = [camera.getWorldDirection().x,camera.getWorldDirection().y];
         this.mov = [0,0,0];
         camera.rotation.z=0;
+        this.acceleration= 0.05;
+        this.airAcceleration=0.005;
+        this.wallJumpPow = 0.2;
+        this.wallJumpUp = 0.15;
+        this.jump = 0.25;
         this.polygon = new polygon([new THREE.Vector3(this.pos[0]-0.5,this.pos[1],this.pos[2]-0.5),new THREE.Vector3(this.pos[0]+0.5,this.pos[1],this.pos[2]-0.5),new THREE.Vector3(this.pos[0]+0.5,this.pos[1],this.pos[2]+0.5),new THREE.Vector3(this.pos[0]-0.5,this.pos[1],this.pos[2]+0.5)],1);
+    }
+    getFriction(){
+        if(this.grounded){
+            return 0.2;
+        } else {
+            return 0.001;
+        }
     }
     update(deltaTime){
         this.mesh.translateX(-this.pos[0]);
@@ -112,22 +126,28 @@ class player extends gameObject{
         this.mov[2]=z;
     }
     calcCamera(){
-        camCont.setPos([this.pos[0],this.pos[1]+3,this.pos[2]]);
-        camCont.setPos([this.pos[0]+Math.sin(this.dir[0])*5*Math.cos(this.dir[1]),this.pos[1]+Math.sin(this.dir[1])*-5,this.pos[2]+Math.cos(this.dir[0])*5*Math.cos(this.dir[1])]);
         if(mouseLocked){
-            //this.dir[0]-=kbrd.mouseMov[0]/400;
-            //this.dir[1]-=kbrd.mouseMov[1]/400;
-            this.dir[0]+=(((kbrd.getKey(37))?-0.05:0)+((kbrd.getKey(39))?0.05:0))
-            this.dir[1]+=(((kbrd.getKey(38))?-0.05:0)+((kbrd.getKey(40))?0.05:0))
+            this.dir[0]-=kbrd.mouseMov[0]/400;
+            this.dir[1]-=kbrd.mouseMov[1]/400;
+            //this.dir[0]+=(((kbrd.getKey(37))?-0.05:0)+((kbrd.getKey(39))?0.05:0))
+            //this.dir[1]+=(((kbrd.getKey(38))?-0.05:0)+((kbrd.getKey(40))?0.05:0))
             this.dir[1]=Math.min(Math.max(this.dir[1],-PI2),PI2);
         }
+        camCont.setPos([this.pos[0]+Math.sin(this.dir[0])*5*Math.cos(this.dir[1]),this.pos[1]+Math.sin(this.dir[1])*-5,this.pos[2]+Math.cos(this.dir[0])*5*Math.cos(this.dir[1])]);
         camCont.setDir([this.dir[1],this.dir[0]]);
     }
     calcMov(){
-        this.scaleMov(0.3,1,0.3);
-        this.rotateAddMov(((kbrd.getKey(65))?-0.1:0)+((kbrd.getKey(68))?0.1:0),this.mov[1],((kbrd.getKey(87))?-0.1:0)+((kbrd.getKey(83))?0.1:0));
+        this.jumping = false;
+        let fric = 1-this.getFriction();
+        this.scaleMov(fric,1,fric);
+        if(this.grounded){
+            this.rotateAddMov(((kbrd.getKey(65))?-this.acceleration:0)+((kbrd.getKey(68))?this.acceleration:0),this.mov[1],((kbrd.getKey(87))?-this.acceleration:0)+((kbrd.getKey(83))?this.acceleration:0));
+        } else {
+            this.rotateAddMov(((kbrd.getKey(65))?-this.airAcceleration:0)+((kbrd.getKey(68))?this.airAcceleration:0),this.mov[1],((kbrd.getKey(87))?-this.airAcceleration:0)+((kbrd.getKey(83))?this.airAcceleration:0));
+        }
         if(this.grounded&&kbrd.getToggle(32)){
-            this.mov[1]+=0.25;
+            this.mov[1]+=this.jump;
+            this.jumping = true;
         }
         this.mov[1]-=0.01;
         this.addMov();
@@ -145,6 +165,7 @@ class player extends gameObject{
     }
     calcIntersect(){
         this.grounded = false;
+        let wallJumpVects = [];
         collisionPolys.forEach(pol=>{
             let inter = this.polygon.intersects(pol);
             if(inter[0]){
@@ -158,13 +179,25 @@ class player extends gameObject{
                     this.mov[1]=0;
                 }
                 if(inter[3]==0){
-                    let eject = polygon.setMagnitude(inter[1],inter[2]);
-                    this.pos[0]+=eject[0];
-                    this.pos[2]+=eject[1];
+                    if(inter[2]!=0){
+                        let eject = polygon.getVectAtMagnitude(inter[1],inter[2]);
+                        this.pos[0]+=eject[0];
+                        this.pos[2]+=eject[1];
+                        let bufEject = polygon.getRotatePI2(eject);
+                        let newMov = polygon.getVectAtMagnitude(bufEject,polygon.putPtOn(bufEject,[this.mov[0],this.mov[2]]));
+                        this.mov = [newMov[0],this.mov[1],newMov[1]];
+                    }
+                    wallJumpVects.push(polygon.getVectAtMagnitude(inter[1],this.wallJumpPow));
                 }
             }
             this.polygon.translateAbsolute(this.pos[0]-0.5,this.pos[1],this.pos[2]-0.5);
         });
+        if(kbrd.getToggle(32)&&wallJumpVects.length&&!this.grounded&&!this.jumping){
+            let vect = polygon.getAvgVect(wallJumpVects);
+            this.mov[0]+=vect[0];
+            this.mov[1]=Math.max(this.wallJumpUp,Math.min(this.mov[1]+this.wallJumpUp,this.jump),this.mov[1]);
+            this.mov[2]+=vect[1];
+        }
     }
     calcBody(){
         this.mesh.position.x=this.pos[0];
@@ -255,11 +288,22 @@ class polygon{
             return [inter,ejectAxis,minOverlap,updown];
         }
     }
-    static setMagnitude(vect,mag){
+    static getAvgVect(vects){
+        let r=[0,0];
+        vects.forEach(v=>{
+            r[0]+=v[0];
+            r[1]+=v[1];
+        })
+        r[0]/=vects.length;
+        r[1]/=vects.length;
+        return r;
+    }
+    static getRotatePI2(vect){
+        return [-vect[1],vect[0]];
+    }
+    static getVectAtMagnitude(vect,mag){
         let dMag = mag/polygon.getMag(vect);
-        vect[0]*=dMag;
-        vect[1]*=dMag;
-        return vect;
+        return [vect[0]*dMag,vect[1]*dMag];
     }
     static getOverlap(start1,stop1,start2,stop2){
         let flip = start1+stop1<start2+stop2;
@@ -370,6 +414,9 @@ class circle extends polygon{
         super(center,height);
         this.isCircle = true;
         this.radius = radius;
+    }
+    getAxes(){
+        
     }
     getMinPt(axis){
         return polygon.putPtOn(axis,this.verts[0])-this.radius;
