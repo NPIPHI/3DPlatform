@@ -44,9 +44,9 @@ class main{
         animate();
         main.cycle();
         camCont.setDir([0,0,0]);
-        let pla  = new platform(0,0,0,1,1,2,{color:0x505050});
-        let pla1 = new platform(0.5,0.5,0.5,1,1,1,{color:0x880000});
-        let floor = new platform(-20,-1,-20,40,1,40,{color:0x505050});
+        let pla  = new boxPlatform(0,0,0,1,1,2,{color:0x505050});
+        let pla1 = new boxPlatform(0.5,0.5,0.5,1,1,1,{color:0x880000});
+        let floor = new boxPlatform(-20,-1,-20,40,1,40,{color:0x505050});
         console.log(pla.polygon.intersects(pla1.polygon));
     }
     static draw(){
@@ -126,6 +126,9 @@ class player extends gameObject{
     calcMov(){
         this.scaleMov(0.3,1,0.3);
         this.rotateAddMov(((kbrd.getKey(65))?-0.1:0)+((kbrd.getKey(68))?0.1:0),this.mov[1],((kbrd.getKey(87))?-0.1:0)+((kbrd.getKey(83))?0.1:0));
+        if(this.grounded&&kbrd.getToggle(32)){
+            this.mov[1]+=0.25;
+        }
         this.mov[1]-=0.01;
         this.addMov();
         this.polygon.translateAbsolute(this.pos[0]-0.5,this.pos[1],this.pos[2]-0.5);
@@ -141,12 +144,26 @@ class player extends gameObject{
         this.pos[2]+=this.mov[2];
     }
     calcIntersect(){
+        this.grounded = false;
         collisionPolys.forEach(pol=>{
-            if(this.polygon.intersects(pol)){
-                this.pos[1]=pol.height+pol.y;
-                this.mov[1]=0;
-                this.polygon.translateAbsolute(this.pos[0]-0.5,this.pos[1],this.pos[2]-0.5);
+            let inter = this.polygon.intersects(pol);
+            if(inter[0]){
+                if(inter[3]==1&&this.mov[1]<=0){
+                    this.pos[1]+=inter[2];
+                    this.mov[1]=0;
+                    this.grounded=true;
+                }
+                if(inter[3]==2&&this.mov>=0){
+                    this.pos[1]-=inter[2];
+                    this.mov[1]=0;
+                }
+                if(inter[3]==0){
+                    let eject = polygon.setMagnitude(inter[1],inter[2]);
+                    this.pos[0]+=eject[0];
+                    this.pos[2]+=eject[1];
+                }
             }
+            this.polygon.translateAbsolute(this.pos[0]-0.5,this.pos[1],this.pos[2]-0.5);
         });
     }
     calcBody(){
@@ -161,7 +178,17 @@ class player extends gameObject{
     }
 }
 class platform{
+    remove(){};
+    translateRelative(){};
+}
+class arbitraryPlatform extends platform{
+    constructor(){
+        super();
+    }
+}
+class boxPlatform extends platform{
     constructor(x,y,z,width,height,depth,color){
+        super();
         this.mesh = new THREE.Mesh(new THREE.BoxGeometry(width,height,depth),new THREE.MeshLambertMaterial(color));
         this.mesh.position.x=x+width/2;
         this.mesh.position.y=y+height/2;
@@ -196,9 +223,16 @@ class polygon{
     intersects(poly){
         let inter = true;
         if(poly.y>this.height+this.y||poly.y+poly.height<this.y){
-            return false;
+            return [false];
         } else {
             let axes = this.getAxes(poly);
+            let minOverlap = poly.y+poly.height-this.y;
+            let ejectAxis = [0,0];
+            let updown = 1;//0 is sideways,1 is up,2is down
+            if(minOverlap>this.y+this.height-poly.y){
+                updown = 2;
+                minOverlap = this.y+this.height-poly.y;
+            }
             let i = 0;
             while(inter&&axes.length>i){
                 let tmin = this.getMinPt(axes[i],this.verts);
@@ -206,9 +240,41 @@ class polygon{
                 let tmax = this.getMaxPt(axes[i],this.verts);
                 let omax = poly.getMaxPt(axes[i],poly.verts);
                 inter = ((tmin<=omin&&tmax>=omin)||(tmin<=omax&&tmax>=omax)||(omin<=tmin&&omax>=tmin)||(omin<=tmax&&omax>=tmax));
+                let bufOver = polygon.getOverlap(tmin,tmax,omin,omax)
+                if (bufOver[0]<minOverlap){
+                    if(bufOver[1]){
+                        axes[i][0]=-axes[i][0];
+                        axes[i][1]=-axes[i][1];
+                    }
+                    ejectAxis = axes[i];
+                    minOverlap = bufOver[0];
+                    updown = 0;
+                }
                 i++;
             }
-            return inter;
+            return [inter,ejectAxis,minOverlap,updown];
+        }
+    }
+    static setMagnitude(vect,mag){
+        let dMag = mag/polygon.getMag(vect);
+        vect[0]*=dMag;
+        vect[1]*=dMag;
+        return vect;
+    }
+    static getOverlap(start1,stop1,start2,stop2){
+        let flip = start1+stop1<start2+stop2;
+        if(start1<start2){
+            if(stop1>stop2){
+                return [stop2-start2,flip];
+            } else {
+                return [stop1-start2,flip];
+            }
+        } else {
+            if(stop2>stop1){
+                return [stop1-start1,flip];
+            } else {
+                return [stop2-start1,flip];
+            }
         }
     }
     getMinPt(axis){
