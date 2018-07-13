@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/NPIPHI/3DPlatform/issues"
   },
-  "homepage": "https://github.com/NPIPHI/3DPlatform#readme"
+  "homepage": "https://github.com/NPIPHI/3DPlatform#readme",
+  "dependencies": {
+    "express": "^4.16.3"
+  }
 }

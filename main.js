@@ -4,11 +4,29 @@ window.onclick=function(){
     renderer.domElement.requestPointerLock()
     mouseLocked = true;
 };
+window.addEventListener('resize',evt=>{
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize( window.innerWidth, window.innerHeight );
+});
+function loadJSON(callback) {   
+
+    var xobj = new XMLHttpRequest();
+        xobj.overrideMimeType("application/json");
+    xobj.open('GET', 'levelData.json', true); // Replace 'my_data' with the path to your file
+    xobj.onreadystatechange = function () {
+          if (xobj.readyState == 4 && xobj.status == "200") {
+            // Required use of an anonymous callback as .open will NOT return a value but simply returns undefined in asynchronous mode
+            callback(xobj.responseText);
+          }
+    };
+    xobj.send(null);  
+}
 class main{
     static init(){
         scene = new THREE.Scene();
         camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
-
         renderer = new THREE.WebGLRenderer();
         renderer.setSize( window.innerWidth, window.innerHeight );
         scene.background = new THREE.Color(0xADD8C6);
@@ -60,7 +78,6 @@ class main{
         requestAnimationFrame(main.cycle);
     }
     static generatePlats(){
-        camCont.setDir([0,0,0]);
         //new boxPlatform(-20,-1,-20,1,20,40,{color:0x8b0000});
         new boxPlatform(-20,-1,-20,6,5,40,{color:0x000040});
         new boxPlatform(14,-1,-20,6,5,40,{color:0x000040});
@@ -328,7 +345,7 @@ class arbitraryPlatform extends platform{
         vertices = new Float32Array( vertices );
         // itemSize = 3 because there are 3 values (components) per vertex
         geometry.addAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
-        let material = new THREE.MeshLambertMaterial(color);
+        let material = new THREE.MeshLambertMaterial({map:texture});
         this.mesh = new THREE.Mesh( geometry, material );
         scene.add(this.mesh);
         this.polygon = new polygon(vertVectors,height)
@@ -350,7 +367,7 @@ class circlePlatform extends platform{
 class boxPlatform extends platform{
     constructor(x,y,z,width,height,depth,color){
         super();
-        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(width,height,depth),new THREE.MeshLambertMaterial(color    ));
+        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(width,height,depth),new THREE.MeshLambertMaterial({map:texture}));
         this.mesh.position.x=x+width/2;
         this.mesh.position.y=y+height/2;
         this.mesh.position.z=z+depth/2;
@@ -599,4 +616,5 @@ var PI2 = Math.PI/2;
 var PI = Math.PI;
 var scene;
 var frame = 0;
+var texture = new THREE.TextureLoader().load("texture.png");
 main.init();
