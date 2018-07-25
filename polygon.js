@@ -1,4 +1,31 @@
 class polygon{
+    constructor(vertices){
+        if(vertices.length>=3){
+            this.verts = vertices;
+            this.planeNormal = this.calcNormal();
+            this.calcAxis();
+        } else {
+            throw "vertices must be greater than 3"
+        }
+    }
+    calcNormal(){
+        let u = this.verts[1].getSubtract(this.verts[0]);
+        let v = this.verts[2].getSubtract(this.verts[1]);
+        return new v3((u.v[1]*v.v[2])-(u.v[2]*v.v[1]),(u.v[2]*v.v[0])-(u.v[0]*v.v[2]),(u.v[0]*v.v[1])-(u.v[1]*v.v[0])).getNormalized();
+    }
+    calcAxis(){
+        this.normals = [];
+        for(let i = 0;i<this.verts.length;i++){
+            if(i<this.verts.length-1){
+                this.normals.push(this.planeNormal.getPerpendicular(new v3(this.verts[i+1].getSubtract(this.verts[i]))));
+            } else {
+                this.normals.push(this.planeNormal.getPerpendicular(new v3(this.verts[0].getSubtract(this.verts[i]))));
+            }
+        }
+        this.normals.push(this.planeNormal);
+    }
+}
+class polyhedron{
     constructor(vertices,y,height){
         this.verts = vertices;
         this.height = height;
@@ -17,7 +44,7 @@ class polygon{
             for(let i=0; i <axes.length;i++){
                 axes[i]=axes[i].getNormalized();
             }
-            polygon.removeDuplicates(axes);
+            polyhedron.removeDuplicates(axes);
             let minOverlap = poly.y+poly.height-this.y;
             let ejectAxis;
             let updown = 1;//0 is sideways,1 is up,2is down
@@ -32,7 +59,7 @@ class polygon{
                 let tmax = this.getMaxPt(axes[i],this.verts);
                 let omax = poly.getMaxPt(axes[i],poly.verts);
                 inter = ((tmin<=omin&&tmax>=omin)||(tmin<=omax&&tmax>=omax)||(omin<=tmin&&omax>=tmin)||(omin<=tmax&&omax>=tmax));
-                let bufOver = polygon.getOverlap(tmin,tmax,omin,omax)
+                let bufOver = polyhedron.getOverlap(tmin,tmax,omin,omax)
                 if (bufOver[0]<minOverlap){
                     if(bufOver[1]){
                         axes[i] = axes[i].getScaled(-1);
@@ -139,7 +166,7 @@ class polygon{
         })
     }
 }
-class circle extends polygon{
+class circle extends polyhedron{
     constructor(center,y,height,radius){
         super([center],y,height);
         this.isCircle = true;
@@ -221,7 +248,7 @@ class vector{
     static putPtOn(axis,pt){//axisIsNormalised
         let m = axis.getMag2();
         if(!(m<1.01&&m>0.99)){
-            throw"aoifdnlakdfn";
+            throw"axis must be normalized";
         }
         return vector.dot(axis,pt);
     }
@@ -369,7 +396,7 @@ class v2 extends vector{
     getMag2(){
         return (this.v[0]*this.v[0]+this.v[1]*this.v[1]);
     }
-    getRotatePI2(){
+    getPerpendicular(){
         return new v2(-this.v[1],this.v[0]);
     }
     getScaled(scale){
@@ -398,6 +425,9 @@ class v2 extends vector{
     getSubtract(vect){
         return new v2(this.v[0]-vect[0],this.v[1]-vect[1]);
     }
+    isClockwiseOf(vect){
+        let vectAngle = Math.atan2(vect.v[1],vect.v[0]);
+    }
 }
 class v3 extends vector{
     constructor(x,y,z){
@@ -410,8 +440,12 @@ class v3 extends vector{
     getMag2(){
         return (this.v[0]*this.v[0]+this.v[1]*this.v[1]+this.v[2]*this.v[2]);
     }
-    getRotatePI2(){
-        throw "can only be called on 2d or 1d vectors"
+    getPerpendicular(vect){
+        if(!vect){
+            return new v3(this.v[1]*vect.v[2]-this.v[2]*vect.v[1],this.v[2]*vect.v[0]-this.v[0]*vect[2],this.v[0]*vect.v[1]-this.v[1]*this.vect[0]);
+        } else {
+            throw "requires anorhter vector"
+        }
     }
     getScaled(scale){
         return new v3(this.v[0]*scale,this.v[1]*scale,this.v[2]*scale);
@@ -431,7 +465,7 @@ class v3 extends vector{
         this.v[2]+=vect.v[2];
     }
     getAdd(vect){
-        return new v3(this.v[0]+vect[0],this.v[1]+vect[1],this.v[2]+vect[2]);
+        return new v3(this.v[0]+vect.v[0],this.v[1]+vect.v[1],this.v[2]+vect.v[2]);
     }
     subtract(vect){
         this.v[0]-=vect.v[0];
@@ -439,6 +473,9 @@ class v3 extends vector{
         this.v[2]-=vect.v[2];
     }
     getSubtract(vect){
-        return new v3(this.v[0]-vect[0],this.v[1]-vect[1],this.v[2]-vect[2]);;
+        return new v3(this.v[0]-vect.v[0],this.v[1]-vect.v[1],this.v[2]-vect.v[2]);;
+    }
+    get2D(){
+        return new v2(this.v[0],this.v[2]);
     }
 }

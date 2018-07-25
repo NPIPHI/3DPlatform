@@ -53,7 +53,7 @@ class main{
         yaxis.position.y=3;
         scene.add( yaxis );
         var light = new THREE.PointLight( 0xffffff, 1, 100 );
-        var ambLight = new THREE.AmbientLight(0x404040);
+        var ambLight = new THREE.AmbientLight(0x606060);
         scene.add (ambLight);
         light.position.set( 0, 10, 0 );
         scene.add( light );
@@ -75,8 +75,16 @@ class main{
             updateLoop.forEach(obj=>{
                 obj.update(main.deltatime);
             });
-            kbrd.resetToggle();
         }
+        if(kbrd.getToggle(49)){
+            gameMode = 0;
+            console.log("gamemode 0");
+        }
+        if(kbrd.getToggle(50)){
+            gameMode=1;
+            console.log("gamemode1");
+        }
+        kbrd.resetToggle();
         requestAnimationFrame(main.cycle);
         if(document.pointerLockElement === renderer.domElement ||
             document.mozPointerLockElement === renderer.domElement) {
@@ -128,6 +136,12 @@ class player{
         this.wallJumpPow = 0.2;
         this.wallJumpUp = 0.15;
         this.jump = 0.25;
+        this.wallJumpBuffer = 5;
+        this.wallJumpTrack = 0;
+        this.debugSpeed = 0.5;
+        this.buildVerts=[];
+        this.buildStep=0;
+        this.buildColor=0x808080;
         this.polygon = new circle(new v2(this.pos.v[0],this.pos.v[2]),this.pos.v[1],1,0.5);
         updateLoop.push(this);
     }
@@ -142,8 +156,14 @@ class player{
         this.mesh.translateX(-this.pos.v[0]);
         this.mesh.translateY(-this.pos.v[1]);
         this.mesh.translateZ(-this.pos.v[2]);
-        this.calcMov();
-        this.calcIntersect();
+        if(gameMode==0){
+            this.calcMov();
+            this.calcIntersect();
+        }
+        if(gameMode==1){
+            this.creativMov();
+            this.creativBuild();
+        }
         this.calcBody();
         this.calcCamera();
     }
@@ -161,8 +181,41 @@ class player{
         camCont.setPos(new v3(this.pos.v[0]+Math.sin(this.dir.v[0])*5*Math.cos(this.dir.v[1]),this.pos.v[1]+Math.sin(this.dir.v[1])*-5,this.pos.v[2]+Math.cos(this.dir.v[0])*5*Math.cos(this.dir.v[1])));
         camCont.setDir(this.dir);
     }
+    creativMov(){
+        this.pos.add(new v3(((kbrd.getToggle(65))?-this.debugSpeed:0)+((kbrd.getToggle(68))?this.debugSpeed:0),((kbrd.getToggle(16))?this.debugSpeed:0)+((kbrd.getToggle(17))?-this.debugSpeed:0),((kbrd.getToggle(87))?-this.debugSpeed:0)+((kbrd.getToggle(83))?this.debugSpeed:0)));
+    }
+    creativBuild(){
+        if(this.buildStep==1){
+            if(kbrd.getToggle(13)){
+                this.buildStep=0;
+                this.buildHeight=this.pos.v[1]-this.buildY;
+                if(this.buildHeight>0&&this.buildVerts.length>2){
+                    new arbitraryPlatform(this.buildVerts,this.buildY,this.buildHeight,this.buildColor);
+                    console.log("platform created");
+                } else {
+                    console.log("invalid Dimensions");
+                }
+                this.buildVerts = [];
+            }
+        }
+        if(this.buildStep==0){
+            if(kbrd.getToggle(32)){
+                this.buildVerts.push(this.pos.get2D());
+                console.log("vert at "+this.pos.get2D());
+            }
+            if(kbrd.getToggle(9)){
+                this.buildStep=1;
+                this.buildY=this.pos.v[1];
+                console.log("y at "+ this.pos.v[1]);
+            }
+        } 
+    }
     calcMov(){
         this.jumping = false;
+        this.wallJumpTrack--;
+        if(kbrd.getToggle(32)&&!this.grounded){
+            this.wallJumpTrack=this.wallJumpBuffer;
+        }
         let fric = 1-this.getFriction();
         this.scaleMov(fric,1,fric);
         if(this.grounded){
@@ -206,7 +259,7 @@ class player{
                         let eject = vector.getVectAtMagnitude(inter[1],inter[2]);
                         this.pos.v[0]+=eject.v[0];
                         this.pos.v[2]+=eject.v[1];
-                        let bufEject = eject.getRotatePI2().getNormalized();
+                        let bufEject = eject.getPerpendicular().getNormalized();
                         let newMov = vector.getVectAtMagnitude(bufEject,vector.putPtOn(bufEject,new v2(this.mov.v[0],this.mov.v[2])));
                         this.mov = new v3(newMov.v[0],this.mov.v[1],newMov.v[1]);
                     }
@@ -217,7 +270,7 @@ class player{
         });
         if(wallJumpVects.length&&!this.grounded&&!this.jumping){
             let vect = vector.getAvgVect(wallJumpVects);
-            if(kbrd.getToggle(32)){
+            if(this.wallJumpTrack>0){
                 this.mov.v[0]+=vect.v[0];
                 this.mov.v[2]+=vect.v[1];
                 this.mov.v[1]=Math.max(this.wallJumpUp,Math.min(this.mov.v[1]+this.wallJumpUp,this.jump),this.mov.v[1]);
@@ -344,7 +397,7 @@ class arbitraryPlatform extends platform{
         let material = new THREE.MeshLambertMaterial(color);
         this.mesh = new THREE.Mesh( geometry, material );
         scene.add(this.mesh);
-        this.polygon = new polygon(verts,y,height)
+        this.polygon = new polyhedron(verts,y,height)
         collisionPolys.push(this.polygon);
     }
 }
@@ -368,7 +421,7 @@ class boxPlatform extends platform{
         this.mesh.position.y=y+height/2;
         this.mesh.position.z=z+depth/2;
         this.height = height;
-        this.polygon = new polygon([new v2(x,z),new v2(x+width,z),new v2(x+width,z+depth), new v2(x,z+depth)],y,height);
+        this.polygon = new polyhedron([new v2(x,z),new v2(x+width,z),new v2(x+width,z+depth), new v2(x,z+depth)],y,height);
         scene.add(this.mesh);
         collisionPolys.push(this.polygon);
     }
