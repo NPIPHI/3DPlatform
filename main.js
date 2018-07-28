@@ -59,20 +59,6 @@ class main{
         scene.add( light );
         camCont = new cameraControl(camera);
         p1 = new player(0,0.5,5);
-        poly = [new polygon([new v3(0,0,0),new v3(0,0,1),new v3(1,0,1),new v3(1,0,0)]),
-            new polygon([new v3(0,1,0),new v3(1,1,0),new v3(1,1,1),new v3(0,1,1)]),
-            new polygon([new v3(1,1,1),new v3(1,1,0),new v3(1,0,0),new v3(1,0,1)]),
-            new polygon([new v3(0,0,1),new v3(0,0,0),new v3(0,1,0),new v3(0,1,1)]),
-            new polygon([new v3(1,0,1),new v3(0,0,1),new v3(0,1,1),new v3(1,1,1)]),
-            new polygon([new v3(1,1,0),new v3(0,1,0),new v3(0,0,0),new v3(1,0,0)])];
-        poly = new polyhedron(poly);
-        pgon = [new polygon([new v3(0,0,0),new v3(0,0,1),new v3(1,0,1),new v3(1,0,0)]),
-            new polygon([new v3(0,1,0),new v3(1,1,0),new v3(1,1,1),new v3(0,1,1)]),
-            new polygon([new v3(1,1,1),new v3(1,1,0),new v3(1,0,0),new v3(1,0,1)]),
-            new polygon([new v3(0,0,1),new v3(0,0,0),new v3(0,1,0),new v3(0,1,1)]),
-            new polygon([new v3(1,0,1),new v3(0,0,1),new v3(0,1,1),new v3(1,1,1)]),
-            new polygon([new v3(1,1,0),new v3(0,1,0),new v3(0,0,0),new v3(1,0,0)])];
-        pgon = new polyhedron(pgon);
         main.generatePlats();
         animate();
         main.cycle();
@@ -118,7 +104,7 @@ class main{
         new boxPlatform(-20,-1,-20,100,1,100,{color:0x505050});
         //new circlePlatform(3,0,0,1,5,{color:0x808000});
         //new circlePlatform(3,0,2.5,1,5,{color:0x808000});
-        new arbitraryPlatform([new v2(4,0),new v2(4,4),new v2(0,4)],0,1,{color:0xff0000});
+        new arbitraryPolygonPlatform([new v2(4,0),new v2(4,4),new v2(0,4)],0,1,{color:0xff0000});
         
     }
 }
@@ -139,7 +125,7 @@ class cameraControl{
 }
 class player{
     constructor(x,y,z){
-        this.mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,1,32),new THREE.MeshLambertMaterial({color: 0x00ff00}));
+        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshLambertMaterial({color: 0x00ff00}));
         scene.add(this.mesh);
         this.pos = new v3(x,y,z);
         this.dir = new v2(camera.getWorldDirection().x,camera.getWorldDirection().y);
@@ -155,12 +141,19 @@ class player{
         this.debugSpeed = 0.5;
         this.buildVerts=[];
         this.buildStep=0;
+        this.jumpVect = new v3(0,0,0);
         this.buildColor=0x808080;
-        this.polygon = new circle(new v2(this.pos.v[0],this.pos.v[2]),this.pos.v[1],1,0.5);
+        this.grounded = false;
+        this.polygon = new polyhedron([new polygon([new v3(0,0,0),new v3(0,0,1),new v3(1,0,1),new v3(1,0,0)]),
+        new polygon([new v3(0,1,0),new v3(1,1,0),new v3(1,1,1),new v3(0,1,1)]),
+        new polygon([new v3(1,1,1),new v3(1,1,0),new v3(1,0,0),new v3(1,0,1)]),
+        new polygon([new v3(0,0,1),new v3(0,0,0),new v3(0,1,0),new v3(0,1,1)]),
+        new polygon([new v3(1,0,1),new v3(0,0,1),new v3(0,1,1),new v3(1,1,1)]),
+        new polygon([new v3(1,1,0),new v3(0,1,0),new v3(0,0,0),new v3(1,0,0)])]);
         updateLoop.push(this);
     }
     getFriction(){
-        if(this.grounded){
+        if(this.wallTouch){
             return 0.2;
         } else {
             return 0.001;
@@ -204,7 +197,7 @@ class player{
                 this.buildStep=0;
                 this.buildHeight=this.pos.v[1]-this.buildY;
                 if(this.buildHeight>0&&this.buildVerts.length>2){
-                    new arbitraryPlatform(this.buildVerts,this.buildY,this.buildHeight,this.buildColor);
+                    new arbitraryPolygonPlatform(this.buildVerts,this.buildY,this.buildHeight,this.buildColor);
                     console.log("platform created");
                 } else {
                     console.log("invalid Dimensions");
@@ -227,19 +220,23 @@ class player{
     calcMov(){
         this.jumping = false;
         this.wallJumpTrack--;
-        if(kbrd.getToggle(32)&&!this.grounded){
-            this.wallJumpTrack=this.wallJumpBuffer;
+        if(this.grounded){
+            this.mov.scale(0.9);
+        } else {
+            this.mov.scale(0.98);
         }
-        let fric = 1-this.getFriction();
-        this.scaleMov(fric,1,fric);
         if(this.grounded){
             this.rotateAddMov(((kbrd.getKey(65))?-this.acceleration:0)+((kbrd.getKey(68))?this.acceleration:0),this.mov.v[1],((kbrd.getKey(87))?-this.acceleration:0)+((kbrd.getKey(83))?this.acceleration:0));
         } else {
             this.rotateAddMov(((kbrd.getKey(65))?-this.airAcceleration:0)+((kbrd.getKey(68))?this.airAcceleration:0),this.mov.v[1],((kbrd.getKey(87))?-this.airAcceleration:0)+((kbrd.getKey(83))?this.airAcceleration:0));
         }
-        if(this.grounded&&kbrd.getToggle(32)){
-            this.mov.v[1]+=this.jump;
-            this.jumping = true;
+        if(kbrd.getToggle(32)){
+            if(this.grounded){
+                this.mov.add(this.jumpVect.getScaled(this.jump));
+                this.jumping = true;
+            } else if(this.wallTouch){
+                this.mov.add(this.jumpVect.getScaled(this.wallJumpPow));
+            }
         }
         this.mov.v[1]-=0.01;
         this.addMov();
@@ -254,7 +251,24 @@ class player{
         this.pos.add(this.mov);
     }
     calcIntersect(){
+        this.wallTouch = false;
         this.grounded = false;
+        collisionPolys.forEach(pol=>{
+            let inter = this.polygon.intersects(pol);
+            if(inter.intersects){
+                this.pos.add(inter.axisOfColision.getScaled(inter.overlap));
+                this.polygon.translateAbsolute(new v3(this.pos.v[0]-0.5,this.pos.v[1],this.pos.v[2]-0.5));
+                this.mov.subtract(inter.axisOfColision.getScaled(vector.putPtOn(inter.axisOfColision,this.mov)));
+                this.wallTouch = true;
+                this.jumpVect = inter.axisOfColision.clone();
+                if(inter.axisOfColision.v[1]>floorAngle){
+                    this.grounded = true;
+                } else {
+                    this.jumpVect.v[1]=Math.max(this.jumpVect.v[1]+1,1);
+                }
+            }
+        });
+        /*this.grounded = false;
         let wallJumpVects = [];
         collisionPolys.forEach(pol=>{
             let inter = this.polygon.intersects(pol);
@@ -337,7 +351,7 @@ class platform{
 
     }
 }
-class arbitraryPlatform extends platform{
+class arbitraryPolygonPlatform extends platform{
     constructor(verts,y,height,color){
         super();
         let polys = verts.length-2;
@@ -410,8 +424,8 @@ class arbitraryPlatform extends platform{
         let material = new THREE.MeshLambertMaterial(color);
         this.mesh = new THREE.Mesh( geometry, material );
         scene.add(this.mesh);
-        this.polygon = new polyhedronLegacy(verts,y,height)
-        collisionPolys.push(this.polygon);
+        this.polyhedron = polyhedron.fromArray(vertices);
+        collisionPolys.push(this.polyhedron);
     }
 }
 class circlePlatform extends platform{
@@ -434,18 +448,18 @@ class boxPlatform extends platform{
         this.mesh.position.y=y+height/2;
         this.mesh.position.z=z+depth/2;
         this.height = height;
-        /*this.polygon = new polyhedron([new polygon([new v3(x,y,z),new v3(x,y,z+depth),new v3(x+width,y,z+depth),new v3(x+width,y,z)]),
+        this.polygon = new polyhedron([new polygon([new v3(x,y,z),new v3(x,y,z+depth),new v3(x+width,y,z+depth),new v3(x+width,y,z)]),
                         new polygon([new v3(x,y+height,z),new v3(x+width,y+height,z),new v3(x+width,y+height,z+depth),new v3(x,y+height,z+depth)]),
                         new polygon([new v3(x+width,y+height,z+depth),new v3(x+width,y+height,z),new v3(x+width,y,z),new v3(x+width,y,z+depth)]),
                         new polygon([new v3(x,y,z+depth),new v3(x,y,z),new v3(x,y+height,z),new v3(x,y+height,z+depth)]),
                         new polygon([new v3(x+width,y,z+depth),new v3(x,y,z+depth),new v3(x,y+height,z+depth),new v3(x+width,y+height,z+depth)]),
-                        new polygon([new v3(x+width,y+height,z),new v3(x,y+height,z),new v3(x,y,z),new v3(x+width,y,z)])]);*/
-        this.polygon = new polyhedronLegacy([new v2(x,z),new v2(x+width,z),new v2(x+width,z+depth), new v2(x,z+depth)],y,height);
+                        new polygon([new v3(x+width,y+height,z),new v3(x,y+height,z),new v3(x,y,z),new v3(x+width,y,z)])]);
+        //this.polygon = new polyhedronLegacy([new v2(x,z),new v2(x+width,z),new v2(x+width,z+depth), new v2(x,z+depth)],y,height);
         scene.add(this.mesh);
         collisionPolys.push(this.polygon);
     }
 }
-class movingPlatform extends arbitraryPlatform{
+class movingPlatform extends arbitraryPolygonPlatform{
     constructor(verts,y,height,color,start,end,speed){
         super(verts,y,height,color);
         this.mov=vector.getVectAtMagnitude(new v3(end[0]-start[0],end[1]-start[1],end[2]-start[2]),speed);
@@ -466,6 +480,5 @@ var frame = 0;
 var texture = new THREE.TextureLoader().load("texture.png");
 var updateLoop =[];
 var gameMode = 0;
-var poly;
-var pgon;
+var floorAngle = 0.5;
 main.init();

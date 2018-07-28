@@ -4,7 +4,6 @@ class polygon{
         if(vertices.length>=3){
             this.verts = vertices;
             this.planeNormal = this.calcNormal();
-            console.log(this.planeNormal);
             this.posAtAxis = vector.putPtOn(this.planeNormal,this.verts[0]);
             //this.calcAxis();
         } else {
@@ -53,6 +52,7 @@ class polyhedron{
         this.calcVerts();
         this.calcAxis();
         this.calcBoundBox();
+        this.translateTrack=new v3(0,0,0);
     }
     calcVerts(){//calculate an array of vertecies, removes duplicates
         this.verts = [];
@@ -95,7 +95,7 @@ class polyhedron{
             let axes = this.axes.slice(0);
             poly.axes.forEach(ax=>{axes.push(ax)});
             let minOverlap = this.faces[0].posAtAxis-poly.getMinPt(axes[0]);
-            let axisCol = axes[0];
+            let axisCol = (!this.axes.length)?axes[0]:axes[0].getScaled(-1);
             for(let i = 1; i < axes.length&&inter;i++){
                 let bufOverlap;
                 if(i<this.faces.length){
@@ -105,23 +105,38 @@ class polyhedron{
                 }
                 if(minOverlap>bufOverlap){
                     minOverlap=bufOverlap;
-                    axisCol = axes[i].getScaled(-1);
+                    axisCol = (i<this.axes.length)?axes[i].getScaled(-1):axes[i];
+                    if(bufOverlap<0){inter = false;}
                 }
             }
-            return [inter,axisCol,minOverlap];
+            return {intersects: inter,axisOfColision: axisCol,overlap: minOverlap};
         } else {
-            return [false];
+            return {intersects: false};
         }
     }
     translate(translateVect){
         this.boundBox[0].add(translateVect);
         this.boundBox[1].add(translateVect);
+        this.translateTrack.add(translateVect);
         this.verts.forEach(v=>{
             v.add(translateVect);
         });
         this.faces.forEach(f=>{
             f.translate(translateVect);
         });
+    }
+    translateAbsolute(translateVect){
+        let relative = translateVect.getSubtract(this.translateTrack);
+        this.boundBox[0].add(relative);
+        this.boundBox[1].add(relative);
+        this.translateTrack.add(relative);
+        this.verts.forEach(v=>{
+            v.add(relative);
+        });
+        this.faces.forEach(f=>{
+            f.translate(relative);
+        });
+        this.translateTrack=translateVect.clone();
     }
     getEdgePts(axis){
         let buf = vector.putPtOn(axis,this.verts[0]);
@@ -138,6 +153,13 @@ class polyhedron{
             buf = Math.min(vector.putPtOn(axis,this.verts[i]),buf);
         }
         return buf;
+    }
+    static fromArray(verts){//takes same list of points as buffererd geometry
+        let faces = []
+        for(let i = 0; i<verts.length;i+=9){
+            faces.push(new polygon([new v3(verts[i+6],verts[i+7],verts[i+8]),new v3(verts[i+3],verts[i+4],verts[i+5]),new v3(verts[i],verts[i+1],verts[i+2])]));
+        }
+        return new polyhedron(faces);
     }
 }
 class polyhedronLegacy{
@@ -463,6 +485,9 @@ class v0 extends vector{
     clone(){
         return new v0();
     }
+    scale(scale){
+
+    }
 }
 class v1 extends vector{
     constructor(x){
@@ -504,6 +529,9 @@ class v1 extends vector{
     }
     clone(){
         return new v1(this.v[0]);
+    }
+    scale(scale){
+        this.v[0]*=scale;
     }
 }
 class v2 extends vector{
@@ -551,6 +579,10 @@ class v2 extends vector{
     }
     clone(){
         return new v2(this.v[0],this.v[1]);
+    }
+    scale(scale){
+        this.v[0]*=scale;
+        this.v[1]*=scale;
     }
 }
 class v3 extends vector{
@@ -604,5 +636,10 @@ class v3 extends vector{
     }
     clone(){
         return new v3(this.v[0],this.v[1],this.v[2]);
+    }
+    scale(scale){
+        this.v[0]*=scale;
+        this.v[1]*=scale;
+        this.v[2]*=scale;
     }
 }
