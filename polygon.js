@@ -1,31 +1,146 @@
+
 class polygon{
     constructor(vertices){
         if(vertices.length>=3){
             this.verts = vertices;
             this.planeNormal = this.calcNormal();
-            this.calcAxis();
+            console.log(this.planeNormal);
+            this.posAtAxis = vector.putPtOn(this.planeNormal,this.verts[0]);
+            //this.calcAxis();
         } else {
             throw "vertices must be greater than 3"
         }
     }
     calcNormal(){
-        let u = this.verts[1].getSubtract(this.verts[0]);
-        let v = this.verts[2].getSubtract(this.verts[1]);
+        let v = this.verts[1].getSubtract(this.verts[0]);
+        let u = this.verts[2].getSubtract(this.verts[1]);
         return new v3((u.v[1]*v.v[2])-(u.v[2]*v.v[1]),(u.v[2]*v.v[0])-(u.v[0]*v.v[2]),(u.v[0]*v.v[1])-(u.v[1]*v.v[0])).getNormalized();
     }
     calcAxis(){
         this.normals = [];
         for(let i = 0;i<this.verts.length;i++){
             if(i<this.verts.length-1){
-                this.normals.push(this.planeNormal.getPerpendicular(new v3(this.verts[i+1].getSubtract(this.verts[i]))));
+                this.normals.push(this.planeNormal.getPerpendicular(this.verts[i].getSubtract(this.verts[i+1])).getNormalized());
             } else {
-                this.normals.push(this.planeNormal.getPerpendicular(new v3(this.verts[0].getSubtract(this.verts[i]))));
+                this.normals.push(this.planeNormal.getPerpendicular(this.verts[i].getSubtract(this.verts[0])).getNormalized());
             }
         }
         this.normals.push(this.planeNormal);
     }
+    getEdgePts(axis){
+        let buf = vector.putPtOn(axis,this.verts[0]);
+        let r=[buf,buf];
+        for(let i = 1; i < this.verts.length; i ++){
+            buf = vector.putPtOn(axis,this.verts[i]);
+            r=[Math.min(r[0],buf),Math.max(r[1],buf)];
+        }   
+    }
+    translate(translateVect){
+        this.verts.forEach(v=>{
+            v.add(translateVect);
+        });
+        this.posAtAxis = vector.putPtOn(this.planeNormal,this.verts[0]);
+    }
+    intersects(poly){
+        this.normals.forEach(n=>{
+
+        })
+    }
 }
 class polyhedron{
+    constructor(faces){
+        this.faces = faces;
+        this.calcVerts();
+        this.calcAxis();
+        this.calcBoundBox();
+    }
+    calcVerts(){//calculate an array of vertecies, removes duplicates
+        this.verts = [];
+        this.faces.forEach(face=>{
+            face.verts.forEach(vert=>{
+                let contains = false;
+                for(let i = 0; i < this.verts.length&&!contains;i++){
+                    if(vert.equals(this.verts[i])){
+                        contains = true;
+                    }
+                }
+                if(!contains){
+                    this.verts.push(vert.clone());
+                }
+            })
+        });
+    }
+    calcAxis(){
+        this.axes = [];
+        this.faces.forEach(f=>{
+            this.axes.push(f.planeNormal);
+        });
+    }
+    calcBoundBox(){//calculate a box used to check potential collisions
+        this.boundBox = [this.verts[0],this.verts[0]];
+        for(let i = 1; i < this.verts.length; i++){
+            this.boundBox = [new v3(Math.min(this.boundBox[0].v[0],this.verts[i].v[0]),Math.min(this.boundBox[0].v[1],this.verts[i].v[1]),Math.min(this.boundBox[0].v[2],this.verts[i].v[2])),new v3(Math.max(this.boundBox[1].v[0],this.verts[i].v[0]),Math.max(this.boundBox[1].v[1],this.verts[i].v[1]),Math.max(this.boundBox[1].v[2],this.verts[i].v[2]))];
+        }
+    }
+    intersects(poly){
+        let inter = true;
+        for(let i = 0; i < 3&&inter; i ++){
+            let tmin = this.boundBox[0].v[i];
+            let omin = poly.boundBox[0].v[i];
+            let tmax = this.boundBox[1].v[i];
+            let omax = poly.boundBox[1].v[i];
+            inter = ((tmin<=omin&&tmax>=omin)||(tmin<=omax&&tmax>=omax)||(omin<=tmin&&omax>=tmin)||(omin<=tmax&&omax>=tmax));
+        }
+        if(inter){
+            let axes = this.axes.slice(0);
+            poly.axes.forEach(ax=>{axes.push(ax)});
+            let minOverlap = this.faces[0].posAtAxis-poly.getMinPt(axes[0]);
+            let axisCol = axes[0];
+            for(let i = 1; i < axes.length&&inter;i++){
+                let bufOverlap;
+                if(i<this.faces.length){
+                    bufOverlap = this.faces[i].posAtAxis-poly.getMinPt(axes[i]);
+                } else {
+                    bufOverlap = poly.faces[i-this.faces.length].posAtAxis-this.getMinPt(axes[i]);
+                }
+                if(minOverlap>bufOverlap){
+                    minOverlap=bufOverlap;
+                    axisCol = axes[i].getScaled(-1);
+                }
+            }
+            return [inter,axisCol,minOverlap];
+        } else {
+            return [false];
+        }
+    }
+    translate(translateVect){
+        this.boundBox[0].add(translateVect);
+        this.boundBox[1].add(translateVect);
+        this.verts.forEach(v=>{
+            v.add(translateVect);
+        });
+        this.faces.forEach(f=>{
+            f.translate(translateVect);
+        });
+    }
+    getEdgePts(axis){
+        let buf = vector.putPtOn(axis,this.verts[0]);
+        let r=[buf,buf];
+        for(let i = 1; i < this.verts.length; i ++){
+            buf = vector.putPtOn(axis,this.verts[i]);
+            r=[Math.min(r[0],buf),Math.max(r[1],buf)];
+        }
+        return r;    
+    }
+    getMinPt(axis){
+        let buf = vector.putPtOn(axis,this.verts[0]);
+        for(let i = 1; i < this.verts.length; i ++){
+            buf = Math.min(vector.putPtOn(axis,this.verts[i]),buf);
+        }
+        return buf;
+    }
+}
+class polyhedronLegacy{
     constructor(vertices,y,height){
         this.verts = vertices;
         this.height = height;
@@ -44,7 +159,7 @@ class polyhedron{
             for(let i=0; i <axes.length;i++){
                 axes[i]=axes[i].getNormalized();
             }
-            polyhedron.removeDuplicates(axes);
+            polyhedronLegacy.removeDuplicates(axes);
             let minOverlap = poly.y+poly.height-this.y;
             let ejectAxis;
             let updown = 1;//0 is sideways,1 is up,2is down
@@ -58,8 +173,8 @@ class polyhedron{
                 let omin = poly.getMinPt(axes[i],poly.verts);
                 let tmax = this.getMaxPt(axes[i],this.verts);
                 let omax = poly.getMaxPt(axes[i],poly.verts);
-                inter = ((tmin<=omin&&tmax>=omin)||(tmin<=omax&&tmax>=omax)||(omin<=tmin&&omax>=tmin)||(omin<=tmax&&omax>=tmax));
-                let bufOver = polyhedron.getOverlap(tmin,tmax,omin,omax)
+                let bufOver = polyhedronLegacy.getOverlap(tmin,tmax,omin,omax)
+                inter = bufOver[0]>0;
                 if (bufOver[0]<minOverlap){
                     if(bufOver[1]){
                         axes[i] = axes[i].getScaled(-1);
@@ -166,7 +281,7 @@ class polyhedron{
         })
     }
 }
-class circle extends polyhedron{
+class circle extends polyhedronLegacy{
     constructor(center,y,height,radius){
         super([center],y,height);
         this.isCircle = true;
@@ -345,6 +460,9 @@ class v0 extends vector{
     getSubtract(vect){
         return new v0();
     }
+    clone(){
+        return new v0();
+    }
 }
 class v1 extends vector{
     constructor(x){
@@ -382,7 +500,10 @@ class v1 extends vector{
         this.v[0]-=vect.v[0];
     }
     getSubtract(vect){
-        return new v2(this.v[0]-vect[0]);
+        return new v1(this.v[0]-vect[0]);
+    }
+    clone(){
+        return new v1(this.v[0]);
     }
 }
 class v2 extends vector{
@@ -428,6 +549,9 @@ class v2 extends vector{
     isClockwiseOf(vect){
         let vectAngle = Math.atan2(vect.v[1],vect.v[0]);
     }
+    clone(){
+        return new v2(this.v[0],this.v[1]);
+    }
 }
 class v3 extends vector{
     constructor(x,y,z){
@@ -441,8 +565,8 @@ class v3 extends vector{
         return (this.v[0]*this.v[0]+this.v[1]*this.v[1]+this.v[2]*this.v[2]);
     }
     getPerpendicular(vect){
-        if(!vect){
-            return new v3(this.v[1]*vect.v[2]-this.v[2]*vect.v[1],this.v[2]*vect.v[0]-this.v[0]*vect[2],this.v[0]*vect.v[1]-this.v[1]*this.vect[0]);
+        if(vect){
+            return new v3(this.v[1]*vect.v[2]-this.v[2]*vect.v[1],this.v[2]*vect.v[0]-this.v[0]*vect.v[2],this.v[0]*vect.v[1]-this.v[1]*vect.v[0]);
         } else {
             throw "requires anorhter vector"
         }
@@ -473,9 +597,12 @@ class v3 extends vector{
         this.v[2]-=vect.v[2];
     }
     getSubtract(vect){
-        return new v3(this.v[0]-vect.v[0],this.v[1]-vect.v[1],this.v[2]-vect.v[2]);;
+        return new v3(this.v[0]-vect.v[0],this.v[1]-vect.v[1],this.v[2]-vect.v[2]);
     }
     get2D(){
         return new v2(this.v[0],this.v[2]);
+    }
+    clone(){
+        return new v3(this.v[0],this.v[1],this.v[2]);
     }
 }

@@ -59,6 +59,20 @@ class main{
         scene.add( light );
         camCont = new cameraControl(camera);
         p1 = new player(0,0.5,5);
+        poly = [new polygon([new v3(0,0,0),new v3(0,0,1),new v3(1,0,1),new v3(1,0,0)]),
+            new polygon([new v3(0,1,0),new v3(1,1,0),new v3(1,1,1),new v3(0,1,1)]),
+            new polygon([new v3(1,1,1),new v3(1,1,0),new v3(1,0,0),new v3(1,0,1)]),
+            new polygon([new v3(0,0,1),new v3(0,0,0),new v3(0,1,0),new v3(0,1,1)]),
+            new polygon([new v3(1,0,1),new v3(0,0,1),new v3(0,1,1),new v3(1,1,1)]),
+            new polygon([new v3(1,1,0),new v3(0,1,0),new v3(0,0,0),new v3(1,0,0)])];
+        poly = new polyhedron(poly);
+        pgon = [new polygon([new v3(0,0,0),new v3(0,0,1),new v3(1,0,1),new v3(1,0,0)]),
+            new polygon([new v3(0,1,0),new v3(1,1,0),new v3(1,1,1),new v3(0,1,1)]),
+            new polygon([new v3(1,1,1),new v3(1,1,0),new v3(1,0,0),new v3(1,0,1)]),
+            new polygon([new v3(0,0,1),new v3(0,0,0),new v3(0,1,0),new v3(0,1,1)]),
+            new polygon([new v3(1,0,1),new v3(0,0,1),new v3(0,1,1),new v3(1,1,1)]),
+            new polygon([new v3(1,1,0),new v3(0,1,0),new v3(0,0,0),new v3(1,0,0)])];
+        pgon = new polyhedron(pgon);
         main.generatePlats();
         animate();
         main.cycle();
@@ -328,7 +342,6 @@ class arbitraryPlatform extends platform{
         super();
         let polys = verts.length-2;
         let vertices = [];
-        let vertVectors = [];
         for(let i = 0; i < polys; i ++){
             vertices.push(verts[0].v[0]);
             vertices.push(y);
@@ -397,7 +410,7 @@ class arbitraryPlatform extends platform{
         let material = new THREE.MeshLambertMaterial(color);
         this.mesh = new THREE.Mesh( geometry, material );
         scene.add(this.mesh);
-        this.polygon = new polyhedron(verts,y,height)
+        this.polygon = new polyhedronLegacy(verts,y,height)
         collisionPolys.push(this.polygon);
     }
 }
@@ -421,7 +434,13 @@ class boxPlatform extends platform{
         this.mesh.position.y=y+height/2;
         this.mesh.position.z=z+depth/2;
         this.height = height;
-        this.polygon = new polyhedron([new v2(x,z),new v2(x+width,z),new v2(x+width,z+depth), new v2(x,z+depth)],y,height);
+        /*this.polygon = new polyhedron([new polygon([new v3(x,y,z),new v3(x,y,z+depth),new v3(x+width,y,z+depth),new v3(x+width,y,z)]),
+                        new polygon([new v3(x,y+height,z),new v3(x+width,y+height,z),new v3(x+width,y+height,z+depth),new v3(x,y+height,z+depth)]),
+                        new polygon([new v3(x+width,y+height,z+depth),new v3(x+width,y+height,z),new v3(x+width,y,z),new v3(x+width,y,z+depth)]),
+                        new polygon([new v3(x,y,z+depth),new v3(x,y,z),new v3(x,y+height,z),new v3(x,y+height,z+depth)]),
+                        new polygon([new v3(x+width,y,z+depth),new v3(x,y,z+depth),new v3(x,y+height,z+depth),new v3(x+width,y+height,z+depth)]),
+                        new polygon([new v3(x+width,y+height,z),new v3(x,y+height,z),new v3(x,y,z),new v3(x+width,y,z)])]);*/
+        this.polygon = new polyhedronLegacy([new v2(x,z),new v2(x+width,z),new v2(x+width,z+depth), new v2(x,z+depth)],y,height);
         scene.add(this.mesh);
         collisionPolys.push(this.polygon);
     }
@@ -447,4 +466,6 @@ var frame = 0;
 var texture = new THREE.TextureLoader().load("texture.png");
 var updateLoop =[];
 var gameMode = 0;
+var poly;
+var pgon;
 main.init();
