@@ -18,6 +18,7 @@ class Keyboard {
             if (evt.keyCode == 9) {
                 evt.preventDefault();
             }
+            //console.log(evt.keyCode);
             this.map[evt.keyCode] = true;
         });
         window.addEventListener('keyup', evt => {

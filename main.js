@@ -60,7 +60,10 @@ class main{
         camCont = new cameraControl(camera);
         p1 = new player(0,0.5,5);
         main.generatePlats();
-        animate();
+        main.onLoad();
+    }
+    static onLoad(){
+        main.draw();
         main.cycle();
     }
     static draw(){
@@ -94,18 +97,30 @@ class main{
           }
     }
     static generatePlats(){
-        //new boxPlatform(-20,-1,-20,1,20,40,{color:0x8b0000});
-        new boxPlatform(-20,-1,-20,6,5,40,{color:0x000040});
-        new boxPlatform(14,-1,-20,6,5,40,{color:0x000040});
-        //new boxPlatform(19,-1,-20,1,20,40,{color:0x8b0000});
-        //new boxPlatform(-20,-1,-20,40,20,1,{color:0x8b0000});
-        new boxPlatform(-20,-1,19,40,20,1,{color:0x8b0000});
-        new boxPlatform(-20,-1,15,20,20,1,{color:0x8b0000});
-        new boxPlatform(-20,-1,-20,100,1,100,{color:0x505050});
-        //new circlePlatform(3,0,0,1,5,{color:0x808000});
-        //new circlePlatform(3,0,2.5,1,5,{color:0x808000});
-        new arbitraryPolygonPlatform([new v2(4,0),new v2(4,4),new v2(0,4)],0,1,{color:0xff0000});
+        OBJLoader.load(
+            // resource URL
+            'res/player/body.obj',
+            // called when resource is loaded
+            function ( object ) {
         
+                scene.add( object );
+                collisionPolys.push(polyhedron.fromArray(object.children[0].geometry.attributes.position.array));
+        
+            },
+            // called when loading is in progresses
+            function ( xhr ) {
+        
+                console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+        
+            },
+            // called when loading has errors
+            function ( error ) {
+        
+                console.log( 'An error happened' );
+        
+            }
+        );
+        new boxPlatform(-20,-1,-20,100,1,100,0xffffff,0);
     }
 }
 class cameraControl{
@@ -141,7 +156,7 @@ class player{
         this.debugSpeed = 0.5;
         this.buildVerts=[];
         this.buildStep=0;
-        this.jumpVect = new v3(0,0,0);
+        this.groudNormal = new v3(0,0,0);
         this.buildColor=0x808080;
         this.grounded = false;
         this.polygon = new polyhedron([new polygon([new v3(0,0,0),new v3(0,0,1),new v3(1,0,1),new v3(1,0,0)]),
@@ -174,9 +189,6 @@ class player{
         this.calcBody();
         this.calcCamera();
     }
-    setMov(x,y,z){
-        this.mov=new v3(x,y,z);
-    }
     calcCamera(){
         if(mouseLocked){
             this.dir.v[0]-=kbrd.mouseMov[0]/400;
@@ -184,6 +196,12 @@ class player{
             //this.dir.v[0]+=(((kbrd.getKey(37))?-0.05:0)+((kbrd.getKey(39))?0.05:0))
             //this.dir.v[1]+=(((kbrd.getKey(38))?-0.05:0)+((kbrd.getKey(40))?0.05:0))
             this.dir.v[1]=Math.min(Math.max(this.dir.v[1],-PI2),PI2);
+            while(this.dir.v[0]>Math.PI*2){
+                this.dir.v[0]-=Math.PI*2;
+            }
+            while(this.dir.v[0]<Math.PI*2){
+                this.dir.v[0]+=Math.PI*2;
+            }
         }
         camCont.setPos(new v3(this.pos.v[0]+Math.sin(this.dir.v[0])*5*Math.cos(this.dir.v[1]),this.pos.v[1]+Math.sin(this.dir.v[1])*-5,this.pos.v[2]+Math.cos(this.dir.v[0])*5*Math.cos(this.dir.v[1])));
         camCont.setDir(this.dir);
@@ -208,7 +226,7 @@ class player{
         if(this.buildStep==0){
             if(kbrd.getToggle(32)){
                 this.buildVerts.push(this.pos.get2D());
-                console.log("vert at "+this.pos.get2D());
+                console.log("vert at "+this.pos.v[0]+", "+this.pos.v[2]);
             }
             if(kbrd.getToggle(9)){
                 this.buildStep=1;
@@ -226,16 +244,16 @@ class player{
             this.mov.scale(0.98);
         }
         if(this.grounded){
-            this.rotateAddMov(((kbrd.getKey(65))?-this.acceleration:0)+((kbrd.getKey(68))?this.acceleration:0),this.mov.v[1],((kbrd.getKey(87))?-this.acceleration:0)+((kbrd.getKey(83))?this.acceleration:0));
+            this.rotateAddMov(new v2(((kbrd.getKey(65))?-this.acceleration:0)+((kbrd.getKey(68))?this.acceleration:0),((kbrd.getKey(87))?-this.acceleration:0)+((kbrd.getKey(83))?this.acceleration:0)));
         } else {
-            this.rotateAddMov(((kbrd.getKey(65))?-this.airAcceleration:0)+((kbrd.getKey(68))?this.airAcceleration:0),this.mov.v[1],((kbrd.getKey(87))?-this.airAcceleration:0)+((kbrd.getKey(83))?this.airAcceleration:0));
+            this.rotateAddMov(new v2(((kbrd.getKey(65))?-this.airAcceleration:0)+((kbrd.getKey(68))?this.airAcceleration:0),((kbrd.getKey(87))?-this.airAcceleration:0)+((kbrd.getKey(83))?this.airAcceleration:0)));
         }
         if(kbrd.getToggle(32)){
             if(this.grounded){
-                this.mov.add(this.jumpVect.getScaled(this.jump));
+                this.mov.add(this.groudNormal.getScaled(this.jump));
                 this.jumping = true;
-            } else if(this.wallTouch){
-                this.mov.add(this.jumpVect.getScaled(this.wallJumpPow));
+            } if(this.wallTouch&&!this.jumping){
+                this.mov.add(this.groudNormal.getScaled(this.wallJumpPow));
             }
         }
         this.mov.v[1]-=0.01;
@@ -253,6 +271,8 @@ class player{
     calcIntersect(){
         this.wallTouch = false;
         this.grounded = false;
+        let groundVects = [];
+        let wallVects = [];
         collisionPolys.forEach(pol=>{
             let inter = this.polygon.intersects(pol);
             if(inter.intersects){
@@ -260,14 +280,23 @@ class player{
                 this.polygon.translateAbsolute(new v3(this.pos.v[0]-0.5,this.pos.v[1],this.pos.v[2]-0.5));
                 this.mov.subtract(inter.axisOfColision.getScaled(vector.putPtOn(inter.axisOfColision,this.mov)));
                 this.wallTouch = true;
-                this.jumpVect = inter.axisOfColision.clone();
                 if(inter.axisOfColision.v[1]>floorAngle){
-                    this.grounded = true;
+                    groundVects.push(inter.axisOfColision.clone());
                 } else {
-                    this.jumpVect.v[1]=Math.max(this.jumpVect.v[1]+1,1);
+                    wallVects.push(inter.axisOfColision.clone());
                 }
             }
         });
+        if(groundVects.length){
+            this.groudNormal = vector.getAvgVect(groundVects).getNormalized();
+            this.grounded = true;
+        } else {
+            if(wallVects.length){
+                this.groudNormal = vector.getAvgVect(wallVects).getAdd(new v3(0,this.wallJumpPow,0)).getNormalized();
+            } else {
+                this.groudNormal = new v3(0,1,0);
+            }
+        }
         /*this.grounded = false;
         let wallJumpVects = [];
         collisionPolys.forEach(pol=>{
@@ -327,10 +356,19 @@ class player{
         this.mesh.position.y=this.pos.v[1]+0.5;
         this.mesh.position.z=this.pos.v[2];
     }
-    rotateAddMov(x,y,z){
+    rotateAddMov(vect){
+        let bufV = vect.getRotate(this.dir.v[0]);
+        if(this.grounded){
+            this.mov.add(bufV.getPerpendicularOf(this.groudNormal));
+        } else {
+            this.mov.v[0]+=bufV.v[0];
+            this.mov.v[2]+=bufV.v[1];
+        }
+        /*if(this.grounded){
+            this.mov.v[1]+=(1-this.groudNormal.v[1])*Math.sqrt((x*x)+(z*z));
+        }
         this.mov.v[0]+=Math.cos(this.dir.v[0])*x+Math.sin(this.dir.v[0])*z;
-        this.mov.v[1]=y;
-        this.mov.v[2]+=-Math.sin(this.dir.v[0])*x+Math.cos(this.dir.v[0])*z;
+        this.mov.v[2]+=-Math.sin(this.dir.v[0])*x+Math.cos(this.dir.v[0])*z;*/
     }
 }
 class platform{
@@ -349,6 +387,51 @@ class platform{
         this.mesh.translateY(y);
         this.mesh.translateZ(z);
 
+    }
+}
+class testPlat extends platform{
+    constructor(){
+        super();
+        let verts = new Float32Array([
+            0,0.5,0,
+            10,0.5,0,
+            0,0.5,10,
+            0,0.5,0,
+            0,3.5,0,
+            10,0.5,0,
+            0,0.5,0,
+            0,0.5,10,
+            0,3.5,0,
+            10,0.5,0,
+            0,3.5,0,
+            0,0.5,10
+        ]);
+        let uvs = new Float32Array([
+            0,0,
+            1,0,
+            0,1,
+            0,0,
+            0,0,
+            1,0,
+            0,0,
+            0,1,
+            0,0,
+            1,0,
+            0,0,
+            0,1
+        ]);
+        
+        let geometry = new THREE.BufferGeometry();
+        
+        // itemSize = 3 because there are 3 values (components) per vertex
+        geometry.addAttribute( 'position', new THREE.BufferAttribute( verts, 3 ) );
+        geometry.addAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+        geometry.computeVertexNormals();
+        let material = new THREE.MeshLambertMaterial({map: texture});
+        this.mesh = new THREE.Mesh( geometry, material );
+        scene.add(this.mesh);
+        this.polyhedron = polyhedron.fromArray(verts);
+        collisionPolys.push(this.polyhedron);
     }
 }
 class arbitraryPolygonPlatform extends platform{
@@ -441,9 +524,10 @@ class circlePlatform extends platform{
     }
 }
 class boxPlatform extends platform{
-    constructor(x,y,z,width,height,depth,color){
+    constructor(x,y,z,width,height,depth,colour,textureType){
         super();
-        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(width,height,depth),new THREE.MeshLambertMaterial(color));
+        let geo = new THREE.BoxGeometry(width,height,depth);
+        this.mesh = new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:colour,map:texture}));
         this.mesh.position.x=x+width/2;
         this.mesh.position.y=y+height/2;
         this.mesh.position.z=z+depth/2;
@@ -467,7 +551,6 @@ class movingPlatform extends arbitraryPolygonPlatform{
 }
 var fps=1;
 var camera;
-var asdf = PI/4;
 var camCont;
 var renderer;
 var p1;
@@ -477,8 +560,9 @@ var PI2 = Math.PI/2;
 var PI = Math.PI;
 var scene;
 var frame = 0;
-var texture = new THREE.TextureLoader().load("texture.png");
+var texture = new THREE.TextureLoader().load("res/texture.png");
 var updateLoop =[];
 var gameMode = 0;
 var floorAngle = 0.5;
+var OBJLoader = new THREE.OBJLoader();
 main.init();

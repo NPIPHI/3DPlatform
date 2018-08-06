@@ -5,7 +5,7 @@ class polygon{
             this.verts = vertices;
             this.planeNormal = this.calcNormal();
             this.posAtAxis = vector.putPtOn(this.planeNormal,this.verts[0]);
-            //this.calcAxis();
+            this.calcAxis();
         } else {
             throw "vertices must be greater than 3"
         }
@@ -17,6 +17,7 @@ class polygon{
     }
     calcAxis(){
         this.normals = [];
+        this.posAtNormals = []
         for(let i = 0;i<this.verts.length;i++){
             if(i<this.verts.length-1){
                 this.normals.push(this.planeNormal.getPerpendicular(this.verts[i].getSubtract(this.verts[i+1])).getNormalized());
@@ -24,7 +25,6 @@ class polygon{
                 this.normals.push(this.planeNormal.getPerpendicular(this.verts[i].getSubtract(this.verts[0])).getNormalized());
             }
         }
-        this.normals.push(this.planeNormal);
     }
     getEdgePts(axis){
         let buf = vector.putPtOn(axis,this.verts[0]);
@@ -72,8 +72,12 @@ class polyhedron{
     }
     calcAxis(){
         this.axes = [];
+        this.checkAxes = []
         this.faces.forEach(f=>{
             this.axes.push(f.planeNormal);
+            f.normals.forEach(n=>{
+                this.checkAxes.push(n);
+            })
         });
     }
     calcBoundBox(){//calculate a box used to check potential collisions
@@ -107,6 +111,36 @@ class polyhedron{
                     minOverlap=bufOverlap;
                     axisCol = (i<this.axes.length)?axes[i].getScaled(-1):axes[i];
                     if(bufOverlap<0){inter = false;}
+                }
+            }
+            if(inter){
+                axes = [];
+                this.faces.forEach(f=>{
+                    f.normals.forEach(n=>{
+                        axes.push(n);
+                    })
+                })
+                poly.faces.forEach(f=>{
+                    f.normals.forEach(n=>{
+                        axes.push(n);
+                    })
+                })
+                for(let i = 1; i < axes.length&&inter;i++){
+                    let tPos = this.getEdgePts(axes[i]);
+                    let oPos = poly.getEdgePts(axes[i]);
+                    if(tPos[1]-oPos[0]<oPos[1]-tPos[0]){
+                        if(tPos[1]-oPos[0]<minOverlap){
+                            minOverlap = tPos[1]-oPos[0];
+                            axisCol = axes[i].getScaled(-1);
+                            inter = tPos[1]-oPos[0]>0;
+                        }
+                    } else {
+                        if(oPos[1]-tPos[0]<minOverlap){
+                            minOverlap = oPos[1]-tPos[0];
+                            axisCol = axes[i];
+                            inter = oPos[1]-tPos[0]>0;
+                        }
+                    }
                 }
             }
             return {intersects: inter,axisOfColision: axisCol,overlap: minOverlap};
@@ -151,6 +185,22 @@ class polyhedron{
         let buf = vector.putPtOn(axis,this.verts[0]);
         for(let i = 1; i < this.verts.length; i ++){
             buf = Math.min(vector.putPtOn(axis,this.verts[i]),buf);
+        }
+        return buf;
+    }
+    getMaxPt(axis){
+        let buf = vector.putPtOn(axis,this.verts[0]);
+        for(let i = 1; i < this.verts.length; i ++){
+            buf = Math.max(vector.putPtOn(axis,this.verts[i]),buf);
+        }
+        return buf;
+    }
+    getEdgePts(axis){
+        let buf = vector.putPtOn(axis,this.verts[0]);
+        buf = [buf,buf];
+        for(let i = 1; i < this.verts.length; i ++){
+            let pos = vector.putPtOn(axis,this.verts[i])
+            buf = [Math.min(pos,buf[0]),Math.max(pos,buf[1])];
         }
         return buf;
     }
@@ -583,6 +633,16 @@ class v2 extends vector{
     scale(scale){
         this.v[0]*=scale;
         this.v[1]*=scale;
+    }
+    getPerpendicularOf(axis){//axis should be an v3 that is normalized
+        return new v3(this.v[0]*(1-Math.abs(axis.v[0])),0,this.v[1]*(1-Math.abs(axis.v[2])));
+    }
+    rotate(angle){//rotate in radians
+        this.v[0]=Math.cos(angle)*this.v[0]+Math.sin(angle)*this.v[1];
+        this.v[1]=Math.cos(angle)*this.v[1]+Math.sin(angle)*this.v[0];
+    }
+    getRotate(angle){//rotate in radians
+        return new v2(+Math.cos(angle)*this.v[0]+Math.sin(angle)*this.v[1],-Math.sin(angle)*this.v[0]+Math.cos(angle)*this.v[1]);
     }
 }
 class v3 extends vector{
