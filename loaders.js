@@ -712,4 +712,32 @@ THREE.OBJLoader.prototype = {
 
     }
 
-}; 
+};
+function getUVs(c){//f0,f1,b0,b1,l0,l1,r0,r1,bot0,bot1,t0,t1
+    return [c[3][0],c[2][1],c[3][0],c[3][1],c[2][0],c[2][1],
+            c[3][0],c[3][1],c[2][0],c[3][1],c[2][0],c[2][1],
+            c[5][0],c[4][1],c[5][0],c[5][1],c[4][0],c[4][1],
+            c[5][0],c[5][1],c[4][0],c[5][1],c[4][0],c[4][1],
+            c[1][0],c[0][1],c[1][0],c[1][1],c[0][0],c[0][1],
+            c[1][0],c[1][1],c[0][0],c[1][1],c[0][0],c[0][1],
+            c[7][0],c[6][1],c[7][0],c[7][1],c[6][0],c[6][1],
+            c[7][0],c[7][1],c[6][0],c[7][1],c[6][0],c[6][1],
+            c[9][0],c[8][1],c[9][0],c[9][1],c[8][0],c[8][1],
+            c[9][0],c[9][1],c[8][0],c[9][1],c[8][0],c[8][1],
+            c[11][0],c[10][1],c[11][0],c[11][1],c[10][0],c[10][1],
+            c[11][0],c[11][1],c[10][0],c[11][1],c[10][0],c[10][1],
+]
+}
+function loadModel(model){
+    let verts = new Float32Array(model.mesh);
+    let uvs = new Float32Array(//f0,f1,b0,b1,l0,l1,r0,r1,bot0,bot1,t0,t1
+        getUVs(model.textureMap)
+    );
+    let geometry = new THREE.BufferGeometry();
+    // itemSize = 3 because there are 3 values (components) per vertex
+    geometry.addAttribute( 'position', new THREE.BufferAttribute( verts, 3 ) );
+    geometry.addAttribute( 'uv', new THREE.BufferAttribute( uvs, 2 ) );
+    geometry.computeVertexNormals();
+    let material = new THREE.MeshLambertMaterial({map: new THREE.TextureLoader().load(model.texture)});
+    return new THREE.Mesh( geometry, material );
+}

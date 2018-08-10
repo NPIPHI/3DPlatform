@@ -313,28 +313,6 @@ class polyhedronLegacy{
                 }
             }
         }
-        /*for(let i=0; i<axes.length;i++){
-            if(axes[i].v[1]==0){
-                if(axes[i].v[0]==0){
-                    axes.splice(i,1);
-                    i--;
-                } else {
-                    for(let i1=1; i1+i<axes.length;i1++){
-                        if(axes[i1+i].v[1]==0){
-                            axes.splice(i1+i,1);
-                            i1--;
-                        }
-                    }
-                }
-            } else {
-                for(let i1=1; i1+i<axes.length;i1++){
-                    if(axes[i].v[0]/axes[i].v[1]==axes[i+i1].v[0]/axes[i+i1].v[1]){
-                        axes.splice(i+i1,1);
-                        i1--;
-                    }
-                }
-            }
-        }*/
     }
     translateRelative(vect){
         this.y+=vect.v[1];
@@ -643,6 +621,9 @@ class v2 extends vector{
     }
     getRotate(angle){//rotate in radians
         return new v2(+Math.cos(angle)*this.v[0]+Math.sin(angle)*this.v[1],-Math.sin(angle)*this.v[0]+Math.cos(angle)*this.v[1]);
+    }
+    getAngle(){
+        return Math.atan2(this.v[1],this.v[0]);
     }
 }
 class v3 extends vector{
