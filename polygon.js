@@ -626,7 +626,27 @@ class v2 extends vector{
         return new v2(+Math.cos(angle)*this.v[0]+Math.sin(angle)*this.v[1],-Math.sin(angle)*this.v[0]+Math.cos(angle)*this.v[1]);
     }
     getAngle(){
-        return Math.atan2(this.v[1],this.v[0]);
+        let ans = Math.atan2(this.v[1],this.v[0]);
+        while(ans<0){
+            ans += Math.PI*2;
+        }
+        return ans;
+    }
+    isClockwiseOf(vect){
+        let a1 = this.getAngle();
+        let a2 = vect.getAngle();
+        while(a1>a2){
+            a2+=Math.PI*2;
+        }
+        return a1<a2+Math.PI;
+    }
+    isClockwiseOfRadians(angle){
+        let a1 = this.getAngle();
+        let a2 = angle;
+        while(a1>a2){
+            a2+=Math.PI*2;
+        }
+        return a1<a2+Math.PI;
     }
 }
 class v3 extends vector{

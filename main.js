@@ -258,8 +258,16 @@ class player{
         camCont.setDir(this.dir);
     }
     animate(){
-        this.body.rotation.y=-this.walkDirection;
         if(this.grounded){
+            this.body.rotation.x=0;
+            this.body.rotation.z=0;
+            this.body.rotation.y=-this.walkDirection;
+            this.armL.rotation.x=0;
+            this.armL.rotation.y=0;
+            this.armL.rotation.z=0;
+            this.armR.rotation.x=0;
+            this.armR.rotation.y=0;
+            this.armR.rotation.z=0;
             if(this.walking){
                 this.swingTracker+=(this.swingDirection)?0.2:-0.2;
             } else {
@@ -317,7 +325,6 @@ class player{
                 }
             }
         } else if(this.wallTouch){
-            let leftTouch = false;
             this.body.rotation.x=0;
             this.body.rotation.y=0;
             this.body.rotation.z=0;
@@ -327,20 +334,31 @@ class player{
             this.armR.rotation.x=0;
             this.armR.rotation.y=0;
             this.armR.rotation.z=0;
-            this.body.rotateY(this.groudNormal.get2D().getAngle()+((leftTouch)?Math.PI/2:-Math.PI/2));
+            this.legL.rotation.x=0;
+            this.legL.rotation.y=0;
+            this.legL.rotation.z=0;
+            this.legR.rotation.x=0;
+            this.legR.rotation.y=0;
+            this.legR.rotation.z=0;
+            let wallAngle = this.groudNormal.get2D().getAngle()+Math.PI/2;
+            let movAngle = this.mov.get2D().getAngle();
+            let leftTouch = !(wallAngle>movAngle-0.1&&wallAngle<movAngle+0.1);
+            this.body.rotateY(-this.groudNormal.get2D().getAngle()+((leftTouch)?Math.PI/2:-Math.PI/2));
             this.body.rotateX(((leftTouch)?0.3:-0.3)); 
             this.body.translateZ((leftTouch)?0.6:-0.6);
             if(leftTouch){
                 this.armL.rotation.x=2.6;
                 this.armR.rotation.x=-0.3;
+                this.legR.rotation.x=-0.3;
             }else{
                 this.armR.rotation.x=-2.6;
                 this.armL.rotation.x=0.3;
+                this.legL.rotation.x=0.3;
             }
 
         } else {
             this.body.rotation.x=0;
-            this.body.rotation.y=0;
+            this.body.rotation.y=-this.walkDirection;
             this.body.rotation.z=0;
             this.armL.rotation.x-=(this.mov.v[1]-0.3)/10;
             this.armR.rotation.x+=(this.mov.v[1]-0.3)/10;
@@ -407,6 +425,8 @@ class player{
                 this.jumping = true;
             } if(this.wallTouch&&!this.jumping){
                 this.mov.add(this.groudNormal.getScaled(this.wallJumpPow));
+                this.mov.v[1]+=1;
+
             }
         }
         this.mov.v[1]-=0.01;
@@ -658,9 +678,9 @@ var gameMode = 0;
 var floorAngle = 0.5;
 var OBJLoader = new THREE.OBJLoader();
 main.init();
-/*OBJLoader.load(
+OBJLoader.load(
             // resource URL
-            'res/player/arm.obj',
+            'res/tinker.obj',
             // called when resource is loaded
             function ( object ) {
         
@@ -680,4 +700,4 @@ main.init();
                 console.log( 'An error happened' );
         
             }
-        );*/
+        );
