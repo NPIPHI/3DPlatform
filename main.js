@@ -102,6 +102,8 @@ class main{
     static generatePlats(){
         new boxPlatform(-20,-1,-20,100,1,100,0xffffff,1);
         new boxPlatform(5,0,5,5,2,3,0xff0000,0);
+        new boxPlatform(10,0,5,1,10,10,0xff0000,0);
+
     }
 }
 class cameraControl{
@@ -127,6 +129,7 @@ class player{
         this.armR = new THREE.Group();
         this.legL = new THREE.Group();
         this.legR = new THREE.Group();
+        this.head = new THREE.Group();
         let mesh = loadModel(model.player.chest);
         mesh.position.x=-0.25;
         mesh.position.y=-0.75;
@@ -172,8 +175,16 @@ class player{
         this.legL.position.x=0;
         this.legL.position.y=-0.5;
         this.body.add(this.legL);
+        mesh = loadModel(model.player.head);
+        mesh.position.x=-0.35;
+        mesh.position.y=-0.35;
+        mesh.position.z=-0.35;
+        this.head.add(mesh);
+        this.head.position.z=0;
+        this.head.position.x=0;
+        this.head.position.y=1.35;
+        this.body.add(this.head);
         scene.add(this.body);}
-        //scene.add(mesh);
         this.pos = new v3(x,y,z);
         this.dir = new v2(camera.getWorldDirection().x,camera.getWorldDirection().y);
         this.mov = new v3(0,0,0);
@@ -195,12 +206,15 @@ class player{
         this.walkDirection=0;
         this.swingTracker=0;
         this.swingDirection=true;
-        this.polygon = new polyhedron([new polygon([new v3(0,-1.2,0),new v3(0,-1.2,1),new v3(0.5,-1.2,1),new v3(0.5,-1.2,0)]),
-        new polygon([new v3(0,1.5,0),new v3(0.5,1.5,0),new v3(0.5,1.5,1),new v3(0,1.5,1)]),
-        new polygon([new v3(0.5,1.5,1),new v3(0.5,1.5,0),new v3(0.5,-1.2,0),new v3(0.5,-1.2,1)]),
-        new polygon([new v3(0,-1.2,1),new v3(0,-1.2,0),new v3(0,1.5,0),new v3(0,1.5,1)]),
-        new polygon([new v3(0.5,-1.2,1),new v3(0,-1.2,1),new v3(0,1.5,1),new v3(0.5,1.5,1)]),
-        new polygon([new v3(0.5,1.5,0),new v3(0,1.5,0),new v3(0,-1.2,0),new v3(0.5,-1.2,0)])]); 
+        this.sideStrafe = false;
+        this.strafeSpeed = 0.1;
+        this.polygon = new polyhedron([new polygon([new v3(0.25,-1.2,0),new v3(0.25,-1.2,1),new v3(0.75,-1.2,1),new v3(0.75,-1.2,0)]),
+        new polygon([new v3(0.25,1.5,0),new v3(0.75,1.5,0),new v3(0.75,1.5,1),new v3(0.25,1.5,1)]),
+        new polygon([new v3(0.75,1.5,1),new v3(0.75,1.5,0),new v3(0.75,-1.2,0),new v3(0.75,-1.2,1)]),
+        new polygon([new v3(0.25,-1.2,1),new v3(0.25,-1.2,0),new v3(0.25,1.5,0),new v3(0.25,1.5,1)]),
+        new polygon([new v3(0.75,-1.2,1),new v3(0.25,-1.2,1),new v3(0.25,1.5,1),new v3(0.75,1.5,1)]),
+        new polygon([new v3(0.75,1.5,0),new v3(0.25,1.5,0),new v3(0.25,-1.2,0),new v3(0.75,-1.2,0)])]); 
+
         updateLoop.push(this);
     }
     getFriction(){
@@ -240,37 +254,108 @@ class player{
                 this.dir.v[0]+=Math.PI*2;
             }
         }
-        camCont.setPos(new v3(this.pos.v[0]+Math.sin(this.dir.v[0])*5*Math.cos(this.dir.v[1]),this.pos.v[1]+Math.sin(this.dir.v[1])*-5,this.pos.v[2]+Math.cos(this.dir.v[0])*5*Math.cos(this.dir.v[1])));
+        camCont.setPos(new v3(this.pos.v[0]+Math.sin(this.dir.v[0])*10*Math.cos(this.dir.v[1]),this.pos.v[1]+Math.sin(this.dir.v[1])*-10,this.pos.v[2]+Math.cos(this.dir.v[0])*10*Math.cos(this.dir.v[1])));
         camCont.setDir(this.dir);
     }
     animate(){
         this.body.rotation.y=-this.walkDirection;
-        if(this.walking){
-            this.swingTracker+=(this.swingDirection)?0.2:-0.2;
-        } else {
-            if(this.swingTracker!=0){
-                this.swingTracker+=(this.swingTracker>0)?(-Math.min(0.1,this.swingTracker)):(Math.min(0.1,-this.swingTracker));
+        if(this.grounded){
+            if(this.walking){
+                this.swingTracker+=(this.swingDirection)?0.2:-0.2;
+            } else {
+                if(this.swingTracker!=0){
+                    this.swingTracker+=(this.swingTracker>0)?(-Math.min(0.1,this.swingTracker)):(Math.min(0.1,-this.swingTracker));
+                }
             }
-        }
-        if(this.swingTracker>2){
-            this.swingDirection=false;
-        }
-        if(this.swingTracker<-2){
-            this.swingDirection=true;
-        }
-        if(this.swingTracker>0){
-            this.armL.rotation.z=(Math.sqrt(this.swingTracker));
-            this.armR.rotation.z=(-Math.sqrt(this.swingTracker));
-            this.legL.rotation.z=(-Math.sqrt(this.swingTracker));
-            this.legR.rotation.z=(Math.sqrt(this.swingTracker));
+            if(this.swingTracker>2){
+                this.swingDirection=false;
+            }
+            if(this.swingTracker<-2){
+                this.swingDirection=true;
+            }
+            if(this.sideStrafe){
+                this.armL.rotation.z = 0;
+                this.armR.rotation.z = 0;
+                this.legL.rotation.z = 0;
+                this.legR.rotation.z = 0;
+                if(this.swingTracker>0){
+                    this.armL.rotation.x=(Math.sqrt(this.swingTracker)/4);
+                    this.armR.rotation.x=0;
+                    this.legL.rotation.x=(Math.sqrt(this.swingTracker)/4);
+                    this.legR.rotation.x=0;
+                    if(true){
+                        this.body.translateZ(this.mov.get2D().getMag()*Math.sin(Math.sqrt(this.swingTracker))*3);
+                    }
+                } else {
+                    this.swingTracker*=-1;
+                    this.armL.rotation.x=0;
+                    this.armR.rotation.x=(-Math.sqrt(this.swingTracker)/4);
+                    this.legL.rotation.x=0;
+                    this.legR.rotation.x=(-Math.sqrt(this.swingTracker)/4);
+                    this.swingTracker*=-1;
+                    if(true){
+                        this.body.translateZ(-this.mov.get2D().getMag()*Math.sin(Math.sqrt(-this.swingTracker))*3);
+                    }
+                }
+            } else {
+                this.armL.rotation.x = 0;
+                this.armR.rotation.x = 0;
+                this.legL.rotation.x = 0;
+                this.legR.rotation.x = 0;
+                if(this.swingTracker>0){
+                    this.armL.rotation.z=(Math.sqrt(this.swingTracker));
+                    this.armR.rotation.z=(-Math.sqrt(this.swingTracker));
+                    this.legL.rotation.z=(-Math.sqrt(this.swingTracker));
+                    this.legR.rotation.z=(Math.sqrt(this.swingTracker));
+                } else {
+                    this.swingTracker*=-1;
+                    this.armL.rotation.z=(-Math.sqrt(this.swingTracker));
+                    this.armR.rotation.z=(Math.sqrt(this.swingTracker));
+                    this.legL.rotation.z=(Math.sqrt(this.swingTracker));
+                    this.legR.rotation.z=(-Math.sqrt(this.swingTracker));
+                    this.swingTracker*=-1;
+                }
+            }
+        } else if(this.wallTouch){
+            let leftTouch = false;
+            this.body.rotation.x=0;
+            this.body.rotation.y=0;
+            this.body.rotation.z=0;
+            this.armL.rotation.x=0;
+            this.armL.rotation.y=0;
+            this.armL.rotation.z=0;
+            this.armR.rotation.x=0;
+            this.armR.rotation.y=0;
+            this.armR.rotation.z=0;
+            this.body.rotateY(this.groudNormal.get2D().getAngle()+((leftTouch)?Math.PI/2:-Math.PI/2));
+            this.body.rotateX(((leftTouch)?0.3:-0.3)); 
+            this.body.translateZ((leftTouch)?0.6:-0.6);
+            if(leftTouch){
+                this.armL.rotation.x=2.6;
+                this.armR.rotation.x=-0.3;
+            }else{
+                this.armR.rotation.x=-2.6;
+                this.armL.rotation.x=0.3;
+            }
+
         } else {
-            this.swingTracker*=-1;
-            this.armL.rotation.z=(-Math.sqrt(this.swingTracker));
-            this.armR.rotation.z=(Math.sqrt(this.swingTracker));
-            this.legL.rotation.z=(Math.sqrt(this.swingTracker));
-            this.legR.rotation.z=(-Math.sqrt(this.swingTracker));
-            this.swingTracker*=-1;
+            this.body.rotation.x=0;
+            this.body.rotation.y=0;
+            this.body.rotation.z=0;
+            this.armL.rotation.x-=(this.mov.v[1]-0.3)/10;
+            this.armR.rotation.x+=(this.mov.v[1]-0.3)/10;
+            this.legL.rotation.x=0;
+            this.legR.rotation.x=0;
+            this.armL.rotation.z=0;
+            this.armR.rotation.z=0;
+            this.legL.rotation.z=0;
+            this.legR.rotation.z=0;
+            this.armR.rotation.x = Math.max(-Math.PI,Math.min(0,this.armR.rotation.x));
+            this.armL.rotation.x = Math.min(Math.PI,Math.max(0,this.armL.rotation.x));
         }
+    }
+    landingEvent(){
+        this.swingTracker =0;
     }
     creativMov(){
         this.pos.add(new v3(((kbrd.getToggle(65))?-this.debugSpeed:0)+((kbrd.getToggle(68))?this.debugSpeed:0),((kbrd.getToggle(16))?this.debugSpeed:0)+((kbrd.getToggle(17))?-this.debugSpeed:0),((kbrd.getToggle(87))?-this.debugSpeed:0)+((kbrd.getToggle(83))?this.debugSpeed:0)));
@@ -304,6 +389,7 @@ class player{
     calcMov(){
         this.jumping = false;
         this.wallJumpTrack--;
+        this.sideStrafe = kbrd.getKey(16);
         if(this.grounded){
             this.mov.scale(0.9);
         } else {
@@ -311,7 +397,7 @@ class player{
         }
         let bufWalk = new v2(((kbrd.getKey(65))?-1:0)+((kbrd.getKey(68))?1:0),((kbrd.getKey(87))?-1:0)+((kbrd.getKey(83))?1:0));
         if(this.grounded){
-            this.calcWalk(bufWalk.getScaled(this.acceleration));
+            this.calcWalk(bufWalk.getScaled(this.acceleration*((this.sideStrafe)?this.strafeSpeed:1)));
         } else {
             this.calcWalk(bufWalk.getScaled(this.airAcceleration));
         }
@@ -337,7 +423,6 @@ class player{
     }
     calcIntersect(){
         this.wallTouch = false;
-        this.grounded = false;
         let groundVects = [];
         let wallVects = [];
         collisionPolys.forEach(pol=>{
@@ -356,8 +441,12 @@ class player{
         });
         if(groundVects.length){
             this.groudNormal = vector.getAvgVect(groundVects).getNormalized();
-            this.grounded = true;
+            if(!this.grounded){
+                this.grounded = true;
+                this.landingEvent();
+            }
         } else {
+            this.grounded = false;
             if(wallVects.length){
                 this.groudNormal = vector.getAvgVect(wallVects).getAdd(new v3(0,this.wallJumpPow,0)).getNormalized();
             } else {
@@ -374,10 +463,19 @@ class player{
         if(vect.getMag2()!=0){
             this.walking =true;
             let bufV = vect.getRotate(this.dir.v[0]);
-            this.walkDirection = bufV.getAngle();
-            if(this.grounded){
-                this.mov.add(bufV.getPerpendicularOf(this.groudNormal));
+            if(!kbrd.getKey(16)){
+                this.walkDirection = bufV.getAngle();
+            }
+            if(!this.sideStrafe){
+                if(this.grounded){
+                    this.mov.add(bufV.getPerpendicularOf(this.groudNormal));
+                } else {
+                    this.mov.v[0]+=bufV.v[0];
+                    this.mov.v[2]+=bufV.v[1];
+                }
             } else {
+                let bufV2 = vector.fromRadians(this.walkDirection).getPerpendicular();
+                bufV = bufV2.getScaled(vector.putPtOn(bufV2,bufV));
                 this.mov.v[0]+=bufV.v[0];
                 this.mov.v[2]+=bufV.v[1];
             }

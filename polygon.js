@@ -211,6 +211,9 @@ class polyhedron{
         }
         return new polyhedron(faces);
     }
+    attach(group){
+        this.parent = group;
+    }
 }
 class polyhedronLegacy{
     constructor(vertices,y,height){
@@ -462,6 +465,9 @@ class vector{
             case 3: return new v3(v.v[0],v.v[1],v.v[2]);
         }
     }
+    static fromRadians(radians){//returns a v2 parallel to the radians 
+        return new v2(Math.cos(radians),Math.sin(radians));
+    }
     equals(v){
         let r=true;
         let i = 0;
@@ -601,9 +607,6 @@ class v2 extends vector{
     }
     getSubtract(vect){
         return new v2(this.v[0]-vect[0],this.v[1]-vect[1]);
-    }
-    isClockwiseOf(vect){
-        let vectAngle = Math.atan2(vect.v[1],vect.v[0]);
     }
     clone(){
         return new v2(this.v[0],this.v[1]);
