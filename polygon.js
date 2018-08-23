@@ -380,6 +380,36 @@ class circle extends polyhedronLegacy{
         return vector.putPtOn(axis,this.verts[0])+this.radius;
     }
 }
+class ray {
+    constructor(p1,dir){
+        this.p1 = p1.clone();
+        this.dir = dir.clone();
+    }
+    getAxes(){
+        return this.normals();
+    }
+    getIntersect(plane){//plane is polygon
+        return this.dir.getScaled(vector.dot(plane.verts[0].getSubtract(this.p1),plane.planeNormal)/vector.dot(plane.planeNormal,this.dir)).getAdd(this.p1);
+    }
+    intersects(poly){
+        let axes = poly.axes.slice(0);
+        let minOverlap = this.faces[0].posAtAxis-poly.getMinPt(axes[0]);
+        let axisCol = (!this.axes.length)?axes[0]:axes[0].getScaled(-1);
+        for(let i = 1; i < axes.length&&inter;i++){
+            let bufOverlap;
+            if(i<this.faces.length){
+                bufOverlap = this.faces[i].posAtAxis-poly.getMinPt(axes[i]);
+            } else {
+                bufOverlap = poly.faces[i-this.faces.length].posAtAxis-this.getMinPt(axes[i]);
+            }
+            if(minOverlap>bufOverlap){
+                minOverlap=bufOverlap;
+                axisCol = (i<this.axes.length)?axes[i].getScaled(-1):axes[i];
+                if(bufOverlap<0){inter = false;}
+            }
+            }
+    }
+}
 class vector{
     static lessThanEqualDistance(p1,p2,dist){
         let dim = Math.min(p1.v.length,p2.v.length);
