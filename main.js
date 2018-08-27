@@ -81,6 +81,9 @@ class main{
             updateLoop.forEach(obj=>{
                 obj.update(main.deltatime);
             });
+            updateDelayLoop.forEach(obj=>{
+                obj.update(main.deltatime);
+            });
         }
         if(kbrd.getToggle(49)){
             gameMode = 0;
@@ -196,11 +199,11 @@ class player{
         this.dir = new v2(camera.getWorldDirection().x,camera.getWorldDirection().y);
         this.mov = new v3(0,0,0);
         camera.rotation.z=0;
-        this.acceleration= 0.05;
+        this.acceleration= 0.08;
         this.airAcceleration=0.005;
         this.wallJumpPow = 0.3;
-        this.wallJumpUp = 0.15;
-        this.jump = 0.25;
+        this.wallJumpUp = 0.2;
+        this.jump = 0.3;
         this.wallJumpBuffer = 5;
         this.wallJumpTrack = 0;
         this.debugSpeed = 0.5;
@@ -215,7 +218,9 @@ class player{
         this.swingDirection=true;
         this.sideStrafe = false;
         this.strafeSpeed = 0.1;
-        this.groundMov = new v3(0,0,0);
+        this.boostMag = 0.2;
+        this.airTime = 0;
+        this.refrenceMov = new v3(0,0,0);
         this.polygon = new polyhedron([new polygon([new v3(0.25,-1.2,0),new v3(0.25,-1.2,1),new v3(0.75,-1.2,1),new v3(0.75,-1.2,0)]),
         new polygon([new v3(0.25,1.5,0),new v3(0.75,1.5,0),new v3(0.75,1.5,1),new v3(0.25,1.5,1)]),
         new polygon([new v3(0.75,1.5,1),new v3(0.75,1.5,0),new v3(0.75,-1.2,0),new v3(0.75,-1.2,1)]),
@@ -223,7 +228,7 @@ class player{
         new polygon([new v3(0.75,-1.2,1),new v3(0.25,-1.2,1),new v3(0.25,1.5,1),new v3(0.75,1.5,1)]),
         new polygon([new v3(0.75,1.5,0),new v3(0.25,1.5,0),new v3(0.25,-1.2,0),new v3(0.75,-1.2,0)])]); 
 
-        updateLoop.push(this);
+        updateDelayLoop.push(this);
     }
     getFriction(){
         if(this.wallTouch){
@@ -424,25 +429,32 @@ class player{
         this.jumping = false;
         this.wallJumpTrack--;
         this.sideStrafe = kbrd.getKey(16);
-        this.mov.subtract(this.groundMov);
+        this.mov.subtract(this.refrenceMov);
         this.mov.scale((this.grounded)?0.9:0.98);
-        this.mov.add(this.groundMov);
+        this.mov.add(this.refrenceMov);
         let bufWalk = new v2(((kbrd.getKey(65))?-1:0)+((kbrd.getKey(68))?1:0),((kbrd.getKey(87))?-1:0)+((kbrd.getKey(83))?1:0));
         if(this.grounded){
             this.calcWalk(bufWalk.getScaled(this.acceleration*((this.sideStrafe)?this.strafeSpeed:1)));
-            this.mov=this.groundMov.getScaled(0.1).getAdd(this.mov.getScaled(0.9));
+            this.mov=this.refrenceMov.getScaled(0.1).getAdd(this.mov.getScaled(0.9));
         } else {
+            if(this.wallTouch){
+
+            } else {
+                if(this.airTime>60) this.refrenceMov.scale(0.99);
+            }
             this.calcWalk(bufWalk.getScaled(this.airAcceleration));
         }
         if(kbrd.getToggle(32)){
             if(this.grounded){
                 this.mov.add(this.groudNormal.getScaled(this.jump));
+                let boost = this.mov.get2D().getScaled(this.boostMag);
+                this.mov.v[0]+=boost.v[0];
+                this.mov.v[2]+=boost.v[1];
                 this.jumping = true;
             } if(this.wallTouch&&!this.jumping){
                 this.mov.add(this.groudNormal.getScaled(this.wallJumpPow));
-                this.mov.v[1]=Math.max(0.2,this.mov.v[1]+0.2);
+                this.mov.v[1]=Math.max(this.wallJumpUp+this.refrenceMov.v[1],this.mov.v[1]);
                 this.wallJumpEvent();
-
             }
         }
         this.mov.v[1]-=0.01;
@@ -461,24 +473,31 @@ class player{
         this.wallTouch = false;
         let groundVects = [];
         let wallVects = [];
+        let groundMovs = [];
+        let wallMovs = [];
         collisionPolys.forEach(pol=>{
             let inter = this.polygon.intersects(pol.polyhedron);
             if(inter.intersects){
                 this.pos.add(inter.axisOfColision.getScaled(inter.overlap));
                 this.polygon.translateAbsolute(new v3(this.pos.v[0]-0.5,this.pos.v[1],this.pos.v[2]-0.5));
-                this.mov.subtract(inter.axisOfColision.getScaled(vector.putPtOn(inter.axisOfColision,this.mov.getSubtract(pol.mov))));
-                this.wallTouch = true;
-                if(inter.axisOfColision.v[1]>floorAngle){
-                    groundVects.push(inter.axisOfColision.clone());
-                    this.groundMov = pol.mov;
-                } else {
-                    this.wallMov = pol.mov;
-                    wallVects.push(inter.axisOfColision.clone());
-                }
+                if(vector.dot(inter.axisOfColision,this.mov.getSubtract(pol.mov))<=0){
+                    this.mov.subtract(inter.axisOfColision.getScaled(vector.putPtOn(inter.axisOfColision,this.mov.getSubtract(pol.mov))));
+                    this.wallTouch = true;
+                    if(inter.axisOfColision.v[1]>floorAngle){
+                        groundVects.push(inter.axisOfColision.clone());
+                        groundMovs.push(pol.mov);
+                    } else {
+                        this.wallMov = pol.mov;
+                        wallVects.push(inter.axisOfColision.clone());
+                        wallMovs.push(pol.mov);
+                    }           
+                } 
             }
         });
         if(groundVects.length){
             this.groudNormal = vector.getAvgVect(groundVects).getNormalized();
+            this.refrenceMov =vector.getAvgVect(groundMovs);
+            this.airTime = 0;
             if(!this.grounded){
                 this.grounded = true;
                 this.landingEvent();
@@ -487,7 +506,10 @@ class player{
             this.grounded = false;
             if(wallVects.length){
                 this.groudNormal = vector.getAvgVect(wallVects).getAdd(new v3(0,this.wallJumpPow,0)).getNormalized();
+                this.refrenceMov =vector.getAvgVect(wallMovs);
+                this.airTime = 0;
             } else {
+                this.airTime++;
                 this.groudNormal = new v3(0,1,0);
             }
         }
@@ -596,9 +618,11 @@ class testPlat extends platform{
 class arbitraryPolygonPlatform extends platform{
     constructor(verts,y,height,bufColor){
         super();
+        this.mov = new v3(0,0.1,0);
         let polys = verts.length-2;
         let vertices = [];
-        let UVs = []
+        let UVs = [];
+        this.animTrack = 0.5;
         for(let i = 0; i < polys; i ++){
             vertices.push(verts[0].v[0]);
             vertices.push(y);
@@ -634,17 +658,17 @@ class arbitraryPolygonPlatform extends platform{
         }
         for(let i = 0; i < verts.length; i++){
             UVs.push(0);
+            UVs.push(0.5);
+            UVs.push(1);
+            UVs.push(0);
             UVs.push(0);
             UVs.push(0);
             UVs.push(1);
-            UVs.push(1);
-            UVs.push(1);
-            UVs.push(0);
-            UVs.push(1);
-            UVs.push(1);
-            UVs.push(1);
+            UVs.push(0.5);
             UVs.push(1);
             UVs.push(0);
+            UVs.push(0);
+            UVs.push(0.5);
             if(i<verts.length-1){
                 vertices.push(verts[i].v[0]);
                 vertices.push(y+height);
@@ -665,6 +689,15 @@ class arbitraryPolygonPlatform extends platform{
                 vertices.push(y+height);
                 vertices.push(verts[i].v[1]);
             } else {
+                vertices.push(verts[i].v[0]);
+                vertices.push(y+height);
+                vertices.push(verts[i].v[1]);
+                vertices.push(verts[0].v[0]);
+                vertices.push(y);
+                vertices.push(verts[0].v[1]);
+                vertices.push(verts[i].v[0]);
+                vertices.push(y);
+                vertices.push(verts[i].v[1]);
                 vertices.push(verts[0].v[0]);
                 vertices.push(y+height);
                 vertices.push(verts[0].v[1]);
@@ -672,16 +705,7 @@ class arbitraryPolygonPlatform extends platform{
                 vertices.push(y);
                 vertices.push(verts[0].v[1]);
                 vertices.push(verts[i].v[0]);
-                vertices.push(y);   
-                vertices.push(verts[i].v[1]);
-                vertices.push(verts[i].v[0]);
                 vertices.push(y+height);
-                vertices.push(verts[i].v[1]);
-                vertices.push(verts[0].v[0]);
-                vertices.push(y+height);
-                vertices.push(verts[0].v[1]);
-                vertices.push(verts[i].v[0]);
-                vertices.push(y);   
                 vertices.push(verts[i].v[1]);
             }
         }
@@ -693,8 +717,26 @@ class arbitraryPolygonPlatform extends platform{
         geometry.computeVertexNormals();
         let material = new THREE.MeshLambertMaterial({color:bufColor, map:wallTexture});
         this.mesh = new THREE.Mesh( geometry, material );
+        for(let i=1; i < this.mesh.geometry.attributes.uv.array.length; i +=2){
+            this.mesh.geometry.attributes.uv.array[i]+=0.5;
+        }
         scene.add(this.mesh);
+        updateLoop.push(this);
         this.polyhedron = polyhedron.fromArray(vertices);
+    }
+    update(){
+        //super.update();
+        this.animTrack-=0.01;
+        for(let i=1; i < this.mesh.geometry.attributes.uv.array.length; i +=2){
+            this.mesh.geometry.attributes.uv.array[i]-=0.01;
+        }
+        while(this.animTrack<0){
+            this.animTrack+=0.5;
+            for(let i=1; i < this.mesh.geometry.attributes.uv.array.length; i +=2){
+                this.mesh.geometry.attributes.uv.array[i]+=0.5;
+            }
+        }
+        this.mesh.geometry.attributes.uv.needsUpdate = true;
     }
 }
 class circlePlatform extends platform{
@@ -711,7 +753,7 @@ class circlePlatform extends platform{
 class boxPlatform extends platform{
     constructor(x,y,z,width,height,depth,colour,textureType){
         super();
-        this.mov=new v3(0.1,0,0);
+        //this.mov=new v3(0.1,0,0);
         let geo = new THREE.BoxGeometry(width,height,depth);
         let material;
         if(textureType == 1){
@@ -730,17 +772,23 @@ class boxPlatform extends platform{
                         new polygon([new v3(x,y,z+depth),new v3(x,y,z),new v3(x,y+height,z),new v3(x,y+height,z+depth)]),
                         new polygon([new v3(x+width,y,z+depth),new v3(x,y,z+depth),new v3(x,y+height,z+depth),new v3(x+width,y+height,z+depth)]),
                         new polygon([new v3(x+width,y+height,z),new v3(x,y+height,z),new v3(x,y,z),new v3(x+width,y,z)])]);
-        //this.polygon = new polyhedronLegacy([new v2(x,z),new v2(x+width,z),new v2(x+width,z+depth), new v2(x,z+depth)],y,height);
         scene.add(this.mesh);
-        updateLoop.push(this);
+        //updateLoop.push(this);
     }
 }
 class movingPlatform extends boxPlatform{
     constructor(x,y,z,width,height,depth,colour,texture,mov,distance){
         super(x,y,z,width,height,depth,colour,texture);
         this.mov = mov;
-        this.distance = distance; 
+        this.distance = distance;
+        this.movDir=true; 
         updateLoop.push(this);
+    }
+    update(){
+        if(this.movDir){
+            this.mov.a
+        }
+        super.update();
     }
 }
 var fps=1;
@@ -754,15 +802,16 @@ var PI2 = Math.PI/2;
 var PI = Math.PI;
 var scene;
 var frame = 0;
-var wallTexture = new THREE.TextureLoader().load("res/wall.png");
+var wallTexture = new THREE.TextureLoader().load("res/up.png");
 var texture = new THREE.TextureLoader().load("res/texture.png");
 var updateLoop =[];
+var updateDelayLoop = [];
 var gameMode = 0;
 var floorAngle = 0.5;
 var OBJLoader = new THREE.OBJLoader();
 var platCodes = "";
-main.init();/*
-OBJLoader.load(
+main.init();
+/*OBJLoader.load(
             // resource URL
             'res/tinker.obj',
             // called when resource is loaded
