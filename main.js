@@ -202,7 +202,7 @@ class player{
         this.acceleration= 0.08;
         this.airAcceleration=0.005;
         this.wallJumpPow = 0.3;
-        this.wallJumpUp = 0.2;
+        this.wallJumpUp = 0.5;
         this.jump = 0.3;
         this.wallJumpBuffer = 5;
         this.wallJumpTrack = 0;
@@ -618,7 +618,8 @@ class testPlat extends platform{
 class arbitraryPolygonPlatform extends platform{
     constructor(verts,y,height,bufColor){
         super();
-        this.mov = new v3(0,0.1,0);
+        this.mov = new v3(0,0.3,0);
+        this.height = height;
         let polys = verts.length-2;
         let vertices = [];
         let UVs = [];
@@ -726,9 +727,9 @@ class arbitraryPolygonPlatform extends platform{
     }
     update(){
         //super.update();
-        this.animTrack-=0.01;
+        this.animTrack-=this.mov.v[1]/this.height;
         for(let i=1; i < this.mesh.geometry.attributes.uv.array.length; i +=2){
-            this.mesh.geometry.attributes.uv.array[i]-=0.01;
+            this.mesh.geometry.attributes.uv.array[i]-=this.mov.v[1]/this.height;
         }
         while(this.animTrack<0){
             this.animTrack+=0.5;
@@ -780,7 +781,8 @@ class movingPlatform extends boxPlatform{
     constructor(x,y,z,width,height,depth,colour,texture,mov,distance){
         super(x,y,z,width,height,depth,colour,texture);
         this.mov = mov;
-        this.distance = distance;
+        this.distance = distance*distance;
+        this.track = 0;
         this.movDir=true; 
         updateLoop.push(this);
     }
