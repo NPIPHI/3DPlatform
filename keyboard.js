@@ -8,7 +8,7 @@ class Keyboard {
         this.YPressed = false;
         this.map = {};
         this.toggleMap = {};
-        window.addEventListener('keydown', evt => {
+        document.addEventListener('keydown', evt => {
             if (!this.map[evt.keyCode]) {
                 this.toggleMap[evt.keyCode] = true;
             }
@@ -21,16 +21,16 @@ class Keyboard {
             //console.log(evt.keyCode);
             this.map[evt.keyCode] = true;
         });
-        window.addEventListener('keyup', evt => {
+        document.addEventListener('keyup', evt => {
             this.map[evt.keyCode] = false;
             this.toggleMap[evt.keyCode] = false;
         });
-        window.addEventListener('mousemove', evt => {
+        document.addEventListener('mousemove', evt => {
             this.mouseMov[0]+=evt.movementX;
             this.mouseMov[1]+=evt.movementY;
             this.mousePos = [evt.x,evt.y];
         });
-        window.addEventListener('mousedown', evt => {
+        document.addEventListener('mousedown', evt => {
             switch (evt.which) {
                 case 1:
                     this.leftToggle = true;
@@ -46,7 +46,7 @@ class Keyboard {
                     break;
             }
         });
-        window.addEventListener("mouseup", evt => {
+        document.addEventListener("mouseup", evt => {
             switch (evt.which) {
                 case 1:
                     this.leftDown = false;
