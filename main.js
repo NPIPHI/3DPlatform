@@ -489,7 +489,7 @@ class player{
                     } else {
                         this.wallMov = pol.mov;
                         wallVects.push(inter.axisOfColision.clone());
-                        wallMovs.push(pol.mov);
+                        wallMovs.push(pol.conveyorMov.getAdd(pol.mov));
                     }           
                 } 
             }
@@ -594,12 +594,13 @@ class cappy extends powerup{
 }
 class platform{
     constructor(){
-        this.mov=new v3(0,0,0);
+        this.conveyorMov=new v3(0,0,0);
+        this.mov = new v3(0,0,0);
         collisionPolys.push(this);
     }
     update(){
-        this.polyhedron.translate(this.mov);
-        this.mesh.translateOnAxis(this.mov.getTHREEEquivelent(),1);
+        this.polyhedron.translate(this.conveyorMov);
+        this.mesh.translateOnAxis(this.conveyorMov.getTHREEEquivelent(),1);
     }
     remove(){
         if(!this.removed){
@@ -618,7 +619,7 @@ class platform{
 class testPlat extends platform{
     constructor(){
         super();
-        this.mov = new v3(0.1,0,0);
+        this.conveyorMov = new v3(0.1,0,0);
         let verts = new Float32Array(model.player.arm.mesh);
         this.mesh = loadModel(model.player.arm)
         scene.add(this.mesh);
@@ -637,7 +638,7 @@ class testPlat extends platform{
 class arbitraryPolygonPlatform extends platform{
     constructor(verts,y,height,bufColor){
         super();
-        this.mov = new v3(0,0.1,0);
+        this.conveyorMov = new v3(0,0.05,0);
         this.height = height;
         let polys = verts.length-2;
         let vertices = [];
@@ -738,7 +739,7 @@ class arbitraryPolygonPlatform extends platform{
         let material = new THREE.MeshLambertMaterial({color:bufColor, map:wallTexture});
         this.mesh = new THREE.Mesh( geometry, material );
         for(let i=1; i < this.mesh.geometry.attributes.uv.array.length; i +=2){
-            this.mesh.geometry.attribtes.uv.array[i]+=0.5;
+            this.mesh.geometry.attributes.uv.array[i]+=0.5;
         }
         scene.add(this.mesh);
         updateLoop.push(this);
@@ -746,9 +747,9 @@ class arbitraryPolygonPlatform extends platform{
     }
     update(){
         //super.update();
-        this.animTrack-=this.mov.v[1]/this.height;
+        this.animTrack-=(this.conveyorMov.v[1]-this.mov.v[1])/this.height;
         for(let i=1; i < this.mesh.geometry.attributes.uv.array.length; i +=2){
-            this.mesh.geometry.attributes.uv.array[i]-=this.mov.v[1]/this.height;
+            this.mesh.geometry.attributes.uv.array[i]-=(this.conveyorMov.v[1]-this.mov.v[1])/this.height;
         }
         while(this.animTrack<0){
             this.animTrack+=0.5;
@@ -799,7 +800,7 @@ class boxPlatform extends platform{
 class movingPlatform extends boxPlatform{
     constructor(x,y,z,width,height,depth,colour,texture,mov,distance){
         super(x,y,z,width,height,depth,colour,texture);
-        this.mov = mov;
+        this.conveyorMov = mov;
         this.distance = distance*distance;
         this.track = 0;
         this.movDir=true; 
@@ -807,7 +808,7 @@ class movingPlatform extends boxPlatform{
     }
     update(){
         if(this.movDir){
-            this.mov.a
+            this.conveyorMov.a
         }
         super.update();
     }
