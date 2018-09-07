@@ -636,7 +636,7 @@ class testPlat extends platform{
     }
 }
 class arbitraryPolygonPlatform extends platform{
-    constructor(verts,y,height,bufColor){
+    constructor(verts,y,height,bufColor,type){
         super();
         this.conveyorMov = new v3(0,0.05,0);
         this.height = height;
