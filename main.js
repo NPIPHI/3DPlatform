@@ -573,6 +573,25 @@ class player{
             this.legR.rotation.z=0;
     }
 }
+class powerup{
+    constructor(character){
+        this.character = character;
+        updateDelayLoop.push(this);
+    }
+    use(){
+        
+    }
+}
+class cappy extends powerup{
+    constructor(character){
+        super(character);
+        this.model = new THREE.Group();
+        this.brim = new THREE.Group();
+    }
+    use(){
+
+    }
+}
 class platform{
     constructor(){
         this.mov=new v3(0,0,0);
@@ -618,7 +637,7 @@ class testPlat extends platform{
 class arbitraryPolygonPlatform extends platform{
     constructor(verts,y,height,bufColor){
         super();
-        this.mov = new v3(0,0.3,0);
+        this.mov = new v3(0,0.1,0);
         this.height = height;
         let polys = verts.length-2;
         let vertices = [];
@@ -719,7 +738,7 @@ class arbitraryPolygonPlatform extends platform{
         let material = new THREE.MeshLambertMaterial({color:bufColor, map:wallTexture});
         this.mesh = new THREE.Mesh( geometry, material );
         for(let i=1; i < this.mesh.geometry.attributes.uv.array.length; i +=2){
-            this.mesh.geometry.attributes.uv.array[i]+=0.5;
+            this.mesh.geometry.attribtes.uv.array[i]+=0.5;
         }
         scene.add(this.mesh);
         updateLoop.push(this);
