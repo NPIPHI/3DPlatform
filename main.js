@@ -646,7 +646,7 @@ class arbitraryPolygonPlatform extends platform{
         this.animTrack = 0.5;
         for(let i = 0; i < polys; i ++){
             vertices.push(verts[0].v[0]);
-            vertices.push(y);
+            vertices.push(y);   
             vertices.push(verts[0].v[1]);
             vertices.push(verts[i+1].v[0]);
             vertices.push(y);
