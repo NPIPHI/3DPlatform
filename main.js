@@ -226,8 +226,8 @@ class player{
         new polygon([new v3(0.75,1.5,1),new v3(0.75,1.5,0),new v3(0.75,-1.2,0),new v3(0.75,-1.2,1)]),
         new polygon([new v3(0.25,-1.2,1),new v3(0.25,-1.2,0),new v3(0.25,1.5,0),new v3(0.25,1.5,1)]),
         new polygon([new v3(0.75,-1.2,1),new v3(0.25,-1.2,1),new v3(0.25,1.5,1),new v3(0.75,1.5,1)]),
-        new polygon([new v3(0.75,1.5,0),new v3(0.25,1.5,0),new v3(0.25,-1.2,0),new v3(0.75,-1.2,0)])]); 
-
+        new polygon([new v3(0.75,1.5,0),new v3(0.25,1.5,0),new v3(0.25,-1.2,0),new v3(0.75,-1.2,0)])]);
+        new testPlat(); 
         updateDelayLoop.push(this);
     }
     getFriction(){
@@ -619,9 +619,13 @@ class platform{
 class testPlat extends platform{
     constructor(){
         super();
-        this.conveyorMov = new v3(0.1,0,0);
-        let verts = new Float32Array(model.player.arm.mesh);
-        this.mesh = loadModel(model.player.arm)
+        this.conveyorMov = new v3(0,0,0);
+        let verts = new Float32Array(polyhedron.generateFromPoints([new v3(1,0,0), new v3(0,0,1), new v3(0,0,0), new v3(1,0,1),new v3(1,1,0),new v3(0,1,1),new v3(0,1,0),new v3(1,2,1)]).getVertices());
+        let geometry = new THREE.BufferGeometry();
+        geometry.addAttribute('position', new THREE.BufferAttribute(verts,3));
+        geometry.computeVertexNormals();
+        let material = new THREE.MeshBasicMaterial({color: 0xff0000});
+        this.mesh = new THREE.Mesh(geometry,material);
         scene.add(this.mesh);
         this.mesh.translateY(1);
         this.polyhedron = polyhedron.fromArray(verts);

@@ -43,7 +43,22 @@ class polygon{
     intersects(poly){
         this.normals.forEach(n=>{
 
-        })
+        });
+    }
+    getPolyVerts(){
+        let verts = [];
+        for(let i = 0; i < this.verts.length-2; i ++){
+            verts.push(this.verts[0].v[0]);
+            verts.push(this.verts[0].v[1]);
+            verts.push(this.verts[0].v[2]);
+            verts.push(this.verts[i+1].v[0]);
+            verts.push(this.verts[i+1].v[1]);
+            verts.push(this.verts[i+1].v[2]);
+            verts.push(this.verts[i+2].v[0]);
+            verts.push(this.verts[i+2].v[1]);
+            verts.push(this.verts[i+2].v[2]);
+        }
+        return verts;
     }
 }
 class polyhedron{
@@ -69,6 +84,11 @@ class polyhedron{
                 }
             })
         });
+    }
+    static calcNormal(p1,p2,p3){
+        let v = p2.getSubtract(p1);
+        let u = p3.getSubtract(p1);
+        return new v3((u.v[1]*v.v[2])-(u.v[2]*v.v[1]),(u.v[2]*v.v[0])-(u.v[0]*v.v[2]),(u.v[0]*v.v[1])-(u.v[1]*v.v[0])).getNormalized();
     }
     calcAxis(){
         this.axes = [];
@@ -213,6 +233,68 @@ class polyhedron{
     }
     attach(group){
         this.parent = group;
+    }
+    getVertices(){//returns list of vertices for 3d polygon creation
+        let verts = [];
+        this.faces.forEach(face => {
+            let fVerts = face.getPolyVerts();
+            fVerts.forEach(v=>{
+                verts.push(v);
+            });
+        });
+        return verts;
+    }
+    static generateFromPoints(points){
+        let normals = []
+        for(let i1 = 0; i1 < points.length-2; i1++){
+            for(let i2 = i1+1; i2 < points.length-1; i2++){
+                for(let i3 = i2+1; i3 < points.length; i3++){
+                    normals.push(polyhedron.calcNormal(points[i1],points[i2],points[i3]));
+                }
+            }
+        }
+        //duplicate all vectors in both directions
+        let normaLen = normals.length;
+        for(let i = 0; i < normaLen; i ++){
+            normals.push(normals[i].getScaled(-1));
+        }
+        //remove duplicates for preformance
+        for(let i =0; i < normals.length*2; i ++){
+            for(let i2 = i+1; i2 < normals.length; i2++){
+                if(normals[i].equals(normals[i2])){
+                    normals.splice(i2,1);
+                    i2--;
+                }
+            }
+        }
+        let bufPolyHed = [];
+        //apply the possible normals to the points to see if three are coplaner
+        for(let i = 0; i < normals.length; i++){
+            let positionOnNormals = []
+            points.forEach(pt=>{
+                positionOnNormals.push(vector.putPtOn(normals[i],pt));
+            });
+            let min = [positionOnNormals[0]];
+            let minPts = [points[0]]
+            for(let i = 1; i < positionOnNormals.length; i++){
+                if(positionOnNormals[i]<min[0]){
+                    min=[positionOnNormals[i]]
+                    minPts = [points[i]];
+                } else if(positionOnNormals[i]==min[0]){
+                    min.push(positionOnNormals[i]);
+                    minPts.push(points[i]);
+                }
+            }
+            if(minPts.length>=3){
+                bufPolyHed.push(minPts);
+            }
+        }
+        console.log(bufPolyHed);
+        let faces  = [];
+        bufPolyHed.forEach(poly => {
+            faces.push(new polygon(poly));
+        });
+        return new polyhedron(faces);
     }
 }
 class polyhedronLegacy{
@@ -735,5 +817,17 @@ class v3 extends vector{
         this.v[0]*=scale;
         this.v[1]*=scale;
         this.v[2]*=scale;
+    }
+    equals(vect){
+        return (vect.v[0]==this.v[0]&&vect.v[1]==this.v[1]&&vect.v[2]==this.v[2]);
+    }
+    static orderClocwise(axis,points){
+        //if axis.v[1] == 0 x=pointsv[0] y= points v[1]
+        //convert points to polar
+        //order in ascending order
+        //done
+    }
+    cross(vect){
+        return new v3(this.v[1]*vect.v[2]-this.v[2]*vect.v[1], this.v[2]*vect.v[0]+this.v[0]*vect.v[2], this.v[0]*vect.v[1]-this.v[1]*vect.v[0]);
     }
 }
